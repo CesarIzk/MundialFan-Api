@@ -1,0 +1,20 @@
+{
+    "name": "mundialfan/backend",
+    "description": "MundialFan - API REST Backend (Slim 4 + Eloquent)",
+    "require": {
+        "php": "^8.1",
+        "slim/slim": "^4.12",
+        "slim/psr7": "^1.6",
+        "illuminate/database": "^10.0",
+        "vlucas/phpdotenv": "^5.5",
+        "firebase/php-jwt": "^6.9"
+    },
+    "autoload": {
+        "psr-4": {
+            "App\\": "src/"
+        }
+    },
+    "config": {
+        "optimize-autoloader": true
+    }
+}
