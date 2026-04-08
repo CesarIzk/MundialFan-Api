@@ -82,7 +82,6 @@ class PostController
         $mediaPath   = null;
         $contentType = 'text';
 
-        // Manejo de archivo adjunto
         if (!empty($files['media'])) {
             $file = $files['media'];
 
@@ -95,15 +94,16 @@ class PostController
                 }
 
                 $filename  = uniqid('post_', true) . '.' . $ext;
-                $uploadDir = __DIR__ . '/../../public/uploads/';
+                $contentType = in_array($ext, ['mp4', 'mov']) ? 'video' : 'image';
+                $subFolder = $contentType === 'video' ? 'videos/' : 'images/';
+                $uploadDir = __DIR__ . '/../../public/uploads/post/' . $subFolder;
 
                 if (!is_dir($uploadDir)) {
                     mkdir($uploadDir, 0755, true);
                 }
 
                 $file->moveTo($uploadDir . $filename);
-                $mediaPath   = 'uploads/' . $filename;
-                $contentType = in_array($ext, ['mp4', 'mov']) ? 'video' : 'image';
+                $mediaPath   = 'uploads/post/' . $subFolder . $filename;
             }
         }
 
