@@ -4,7 +4,7 @@ return [
     "database" => [
         "host" => "localhost",
         "user" => "root",
-        "password" => "123456789",
+        "password" => "root",
         "dbname" => "mundialfan",
         "port" => "3306",
     ],
