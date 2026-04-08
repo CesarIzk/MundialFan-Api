@@ -100,6 +100,7 @@ class User extends Model
 
         return self::where(function ($query) use ($term) {
             $query->where('name', 'LIKE', $term)
+                  ->orWhere('username', 'LIKE', $term)
                   ->orWhere('email', 'LIKE', $term);
         })
         ->where('id', '!=', $excludeId)
