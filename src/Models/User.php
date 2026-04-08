@@ -92,20 +92,18 @@ class User extends Model
      */
     public static function search(string $q, int $excludeId): \Illuminate\Database\Eloquent\Collection
     {
-        if (empty(trim($q))) {
-            return collect();
+        $query = self::where('id', '!=', $excludeId)
+            ->select('id', 'name', 'username', 'email', 'profile_picture', 'country');
+
+        if (!empty(trim($q))) {
+            $term = '%' . trim($q) . '%';
+            $query->where(function ($qBuilder) use ($term) {
+                $qBuilder->where('name', 'LIKE', $term)
+                      ->orWhere('username', 'LIKE', $term)
+                      ->orWhere('email', 'LIKE', $term);
+            });
         }
 
-        $term = '%' . trim($q) . '%';
-
-        return self::where(function ($query) use ($term) {
-            $query->where('name', 'LIKE', $term)
-                  ->orWhere('username', 'LIKE', $term)
-                  ->orWhere('email', 'LIKE', $term);
-        })
-        ->where('id', '!=', $excludeId)
-        ->select('id', 'name', 'username', 'email', 'profile_picture')
-        ->limit(20)
-        ->get();
+        return $query->limit(50)->get();
     }
 }

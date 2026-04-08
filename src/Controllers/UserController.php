@@ -2,6 +2,7 @@
 
 namespace App\Controllers;
 
+use Illuminate\Database\Capsule\Manager as DB;
 use App\Models\User;
 use App\Models\Post;
 use Psr\Http\Message\ResponseInterface as Response;
@@ -135,6 +136,97 @@ class UserController
         $user->save();
 
         return $this->json($response, ['message' => 'Cuenta desactivada.']);
+    }
+
+    // ── GET /api/users/me/friends ─────────────────────────────────────────────
+    public function getFriends(Request $request, Response $response): Response
+    {
+        $authUser = $request->getAttribute('auth_user');
+        $myId     = $authUser['sub'];
+
+        $friendsSent = DB::table('friendships')
+            ->join('users', 'friendships.friend_id', '=', 'users.id')
+            ->where('friendships.user_id', $myId)
+            ->where('friendships.status', 'accepted')
+            ->select('users.id', 'users.name', 'users.username', 'users.profile_picture', 'users.country');
+
+        $friendsReceived = DB::table('friendships')
+            ->join('users', 'friendships.user_id', '=', 'users.id')
+            ->where('friendships.friend_id', $myId)
+            ->where('friendships.status', 'accepted')
+            ->select('users.id', 'users.name', 'users.username', 'users.profile_picture', 'users.country');
+
+        $friends = $friendsSent->union($friendsReceived)->get();
+
+        return $this->json($response, $friends);
+    }
+
+    // ── GET /api/users/me/requests ────────────────────────────────────────────
+    public function getRequests(Request $request, Response $response): Response
+    {
+        $authUser = $request->getAttribute('auth_user');
+        $myId     = $authUser['sub'];
+
+        // Obtener las solicitudes pendientes donde el receptor soy yo
+        $requests = DB::table('friendships')
+            ->join('users', 'friendships.user_id', '=', 'users.id')
+            ->where('friendships.friend_id', $myId)
+            ->where('friendships.status', 'pending')
+            ->select('users.id', 'users.name', 'users.username', 'users.profile_picture', 'users.country')
+            ->get();
+
+        return $this->json($response, $requests);
+    }
+
+    // ── POST /api/users/me/requests/{id} (Enviar Solicitud) ───────────────────
+    public function sendRequest(Request $request, Response $response, array $args): Response
+    {
+        $authUser = $request->getAttribute('auth_user');
+        $myId     = $authUser['sub'];
+        $friendId = $args['id'];
+
+        $exists = DB::table('friendships')->where('user_id', $myId)->where('friend_id', $friendId)->exists();
+        
+        if (!$exists) {
+            DB::table('friendships')->insert([
+                'user_id'   => $myId,
+                'friend_id' => $friendId,
+                'status'    => 'pending'
+            ]);
+        }
+
+        return $this->json($response, ['message' => 'Solicitud enviada.']);
+    }
+
+    // ── POST /api/users/me/requests/{id}/accept ─────────────────────────────
+    public function acceptRequest(Request $request, Response $response, array $args): Response
+    {
+        $authUser = $request->getAttribute('auth_user');
+        $myId     = $authUser['sub'];
+        $senderId = $args['id'];
+
+        DB::table('friendships')
+            ->where('friend_id', $myId)
+            ->where('user_id', $senderId)
+            ->update(['status' => 'accepted']);
+
+        return $this->json($response, ['message' => 'Solicitud aceptada.']);
+    }
+
+    // ── POST /api/users/me/requests/{id}/decline ────────────────────────────
+    public function declineRequest(Request $request, Response $response, array $args): Response
+    {
+        $authUser = $request->getAttribute('auth_user');
+        $myId     = $authUser['sub'];
+        $senderId = $args['id'];
+
+        // Eliminamos el registro para que la persona pueda volver a enviarla en el futuro si lo desea
+        DB::table('friendships')
+            ->where('friend_id', $myId)
+            ->where('user_id', $senderId)
+            ->delete();
+
+        return $this->json($response, ['message' => 'Solicitud rechazada.']);
     }
 
     private function json(Response $response, mixed $data, int $status = 200): Response
