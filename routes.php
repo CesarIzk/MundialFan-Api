@@ -4,6 +4,9 @@ use App\Controllers\AuthController;
 use App\Controllers\PostController;
 use App\Controllers\UserController;
 use App\Controllers\AdminController;
+use App\Controllers\CategoryController;
+use App\Controllers\CountryController;
+use App\Controllers\ChampionshipController;
 use App\Middleware\JwtMiddleware;
 use Slim\App;
 use Slim\Routing\RouteCollectorProxy;
@@ -18,6 +21,16 @@ return function (App $app) {
             $auth->post('/login',    [AuthController::class, 'login']);
             $auth->post('/register', [AuthController::class, 'register']);
         });
+
+        // ── Categorías (públicas) ─────────────────────────────────────────────
+        $api->get('/categories', [CategoryController::class, 'index']);
+
+        // ── Países (públicas) ─────────────────────────────────────────────────
+        $api->get('/countries',      [CountryController::class, 'index']);
+        $api->get('/countries/{id}', [CountryController::class, 'show']);
+
+        // ── Campeonatos (públicas) ────────────────────────────────────────────
+        $api->get('/championships',  [ChampionshipController::class, 'index']);
 
         // ── Posts (GET público, resto protegido) ──────────────────────────────
         $api->get('/posts',     [PostController::class, 'index']);   // público
