@@ -2,6 +2,7 @@
 
 namespace App\Controllers;
 
+use Illuminate\Database\Capsule\Manager as DB;
 use App\Models\User;
 use App\Models\Post;
 use Psr\Http\Message\ResponseInterface as Response;
@@ -135,6 +136,197 @@ class UserController
         $user->save();
 
         return $this->json($response, ['message' => 'Cuenta desactivada.']);
+    }
+
+    // ── GET /api/users/me/friends ─────────────────────────────────────────────
+    public function getFriends(Request $request, Response $response): Response
+    {
+        $authUser = $request->getAttribute('auth_user');
+        $myId     = $authUser['sub'];
+
+        $friendsSent = DB::table('friendships')
+            ->join('users', 'friendships.friend_id', '=', 'users.id')
+            ->where('friendships.user_id', $myId)
+            ->where('friendships.status', 'accepted')
+            ->select('users.id', 'users.name', 'users.username', 'users.profile_picture', 'users.country');
+
+        $friendsReceived = DB::table('friendships')
+            ->join('users', 'friendships.user_id', '=', 'users.id')
+            ->where('friendships.friend_id', $myId)
+            ->where('friendships.status', 'accepted')
+            ->select('users.id', 'users.name', 'users.username', 'users.profile_picture', 'users.country');
+
+        $friends = $friendsSent->union($friendsReceived)->get();
+
+        return $this->json($response, $friends);
+    }
+
+    // ── GET /api/users/me/requests ────────────────────────────────────────────
+    public function getRequests(Request $request, Response $response): Response
+    {
+        $authUser = $request->getAttribute('auth_user');
+        $myId     = $authUser['sub'];
+
+        // Obtener las solicitudes pendientes donde el receptor soy yo
+        $requests = DB::table('friendships')
+            ->join('users', 'friendships.user_id', '=', 'users.id')
+            ->where('friendships.friend_id', $myId)
+            ->where('friendships.status', 'pending')
+            ->select('users.id', 'users.name', 'users.username', 'users.profile_picture', 'users.country')
+            ->get();
+
+        return $this->json($response, $requests);
+    }
+
+    // ── POST /api/users/me/requests/{id} (Enviar Solicitud) ───────────────────
+    public function sendRequest(Request $request, Response $response, array $args): Response
+    {
+        $authUser = $request->getAttribute('auth_user');
+        $myId     = $authUser['sub'];
+        $friendId = $args['id'];
+
+        $exists = DB::table('friendships')->where('user_id', $myId)->where('friend_id', $friendId)->exists();
+        
+        if (!$exists) {
+            DB::table('friendships')->insert([
+                'user_id'   => $myId,
+                'friend_id' => $friendId,
+                'status'    => 'pending'
+            ]);
+        }
+
+        return $this->json($response, ['message' => 'Solicitud enviada.']);
+    }
+
+    // ── POST /api/users/me/requests/{id}/accept ─────────────────────────────
+    public function acceptRequest(Request $request, Response $response, array $args): Response
+    {
+        $authUser = $request->getAttribute('auth_user');
+        $myId     = $authUser['sub'];
+        $senderId = $args['id'];
+
+        DB::table('friendships')
+            ->where('friend_id', $myId)
+            ->where('user_id', $senderId)
+            ->update(['status' => 'accepted']);
+
+        return $this->json($response, ['message' => 'Solicitud aceptada.']);
+    }
+
+    // ── POST /api/users/me/requests/{id}/decline ────────────────────────────
+    public function declineRequest(Request $request, Response $response, array $args): Response
+    {
+        $authUser = $request->getAttribute('auth_user');
+        $myId     = $authUser['sub'];
+        $senderId = $args['id'];
+
+        DB::table('friendships')
+            ->where('friend_id', $myId)
+            ->where('user_id', $senderId)
+            ->delete();
+
+        return $this->json($response, ['message' => 'Solicitud rechazada.']);
+    }
+
+    // ── GET /api/users/me/chats ───────────────────────────────────────────────
+    public function getChats(Request $request, Response $response): Response
+    {
+        $myId  = $request->getAttribute('auth_user')['sub'];
+        
+        $chats = DB::table('vw_chat_sidebar')
+            ->where('owner_id', $myId)
+            ->orderBy('last_message_date', 'desc')
+            ->get();
+
+        return $this->json($response, $chats);
+    }
+
+    // ── GET /api/users/me/chats/{id} ──────────────────────────────────────────
+    public function getMessages(Request $request, Response $response, array $args): Response
+    {
+        $myId     = $request->getAttribute('auth_user')['sub'];
+        $friendId = $args['id'];
+        
+        DB::table('messages')
+            ->where('sender_id', $friendId)
+            ->where('receiver_id', $myId)
+            ->where('status', '!=', 'read')
+            ->update(['status' => 'read']);
+
+        $messages = DB::table('messages')
+            ->where(function($q) use ($myId, $friendId) {
+                $q->where('sender_id', $myId)->where('receiver_id', $friendId);
+            })
+            ->orWhere(function($q) use ($myId, $friendId) {
+                $q->where('sender_id', $friendId)->where('receiver_id', $myId);
+            })
+            ->orderBy('created_at', 'asc')
+            ->get();
+
+        return $this->json($response, $messages);
+    }
+
+    // ── POST /api/users/me/chats/{id} ─────────────────────────────────────────
+    public function sendMessage(Request $request, Response $response, array $args): Response
+    {
+        $myId     = $request->getAttribute('auth_user')['sub'];
+        $friendId = $args['id'];
+        $body     = (array) $request->getParsedBody();
+        $content  = $body['content'] ?? null;
+        $files    = $request->getUploadedFiles();
+
+        $mediaUrl  = null;
+        $mediaType = null;
+
+        if (!empty($files['media']) && $files['media']->getError() === UPLOAD_ERR_OK) {
+            $file = $files['media'];
+            $ext  = strtolower(pathinfo($file->getClientFilename(), PATHINFO_EXTENSION));
+            
+            if (in_array($ext, ['jpg', 'jpeg', 'png', 'gif', 'webp'])) {
+                $mediaType = 'image';
+            } elseif (in_array($ext, ['mp4', 'mov', 'avi', 'webm'])) {
+                $mediaType = 'video';
+            } else {
+                return $this->json($response, ['message' => 'Formato no permitido.'], 422);
+            }
+
+            // Lógica para crear la carpeta combinada con los IDs ordenados (Ej: 1-2)
+            $minId      = min($myId, $friendId);
+            $maxId      = max($myId, $friendId);
+            $folderName = $minId . '-' . $maxId;
+            
+            // Back->public->uploads->Chat Multimedia->[CarpetaCombinada]->[MiID]
+            $baseDir   = __DIR__ . '/../../public/uploads/Chat Multimedia';
+            $targetDir = $baseDir . '/' . $folderName . '/' . $myId;
+
+            if (!is_dir($targetDir)) {
+                mkdir($targetDir, 0777, true);
+            }
+
+            $filename = 'msg_' . time() . '_' . uniqid() . '.' . $ext;
+            $file->moveTo($targetDir . '/' . $filename);
+            
+            // Guardamos la ruta relativa en BD
+            $mediaUrl = 'Chat Multimedia/' . $folderName . '/' . $myId . '/' . $filename;
+        }
+
+        if (!$content && !$mediaUrl) {
+            return $this->json($response, ['message' => 'El mensaje está vacío.'], 422);
+        }
+
+        $msgId = DB::table('messages')->insertGetId([
+            'sender_id'   => $myId,
+            'receiver_id' => $friendId,
+            'content'     => $content,
+            'media_url'   => $mediaUrl,
+            'media_type'  => $mediaType,
+            'status'      => 'sent',
+            'created_at'  => date('Y-m-d H:i:s')
+        ]);
+
+        $newMessage = DB::table('messages')->where('id', $msgId)->first();
+
+        return $this->json($response, (array) $newMessage);
     }
 
     private function json(Response $response, mixed $data, int $status = 200): Response

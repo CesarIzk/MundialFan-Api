@@ -57,6 +57,16 @@ return function (App $app) {
             $users->post('/me/avatar',    [UserController::class, 'updateAvatar']);
             $users->put('/me/password',   [UserController::class, 'updatePassword']);
             $users->delete('/me',         [UserController::class, 'deactivate']);
+            $users->get('/me/friends',               [UserController::class, 'getFriends']);
+            $users->get('/me/requests',              [UserController::class, 'getRequests']);
+            $users->post('/me/requests/{id}',        [UserController::class, 'sendRequest']);
+            $users->post('/me/requests/{id}/accept', [UserController::class, 'acceptRequest']);
+            $users->post('/me/requests/{id}/decline',[UserController::class, 'declineRequest']);
+            
+        // ── Chats ─────────────────────────────────────────────────────────────
+            $users->get('/me/chats',                 [UserController::class, 'getChats']);
+            $users->get('/me/chats/{id}',            [UserController::class, 'getMessages']);
+            $users->post('/me/chats/{id}',           [UserController::class, 'sendMessage']);
         })->add(JwtMiddleware::class);
 
         // ── Admin ─────────────────────────────────────────────────────────────
