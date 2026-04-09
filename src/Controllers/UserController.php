@@ -220,13 +220,113 @@ class UserController
         $myId     = $authUser['sub'];
         $senderId = $args['id'];
 
-        // Eliminamos el registro para que la persona pueda volver a enviarla en el futuro si lo desea
         DB::table('friendships')
             ->where('friend_id', $myId)
             ->where('user_id', $senderId)
             ->delete();
 
         return $this->json($response, ['message' => 'Solicitud rechazada.']);
+    }
+
+    // ── GET /api/users/me/chats ───────────────────────────────────────────────
+    public function getChats(Request $request, Response $response): Response
+    {
+        $myId  = $request->getAttribute('auth_user')['sub'];
+        
+        $chats = DB::table('vw_chat_sidebar')
+            ->where('owner_id', $myId)
+            ->orderBy('last_message_date', 'desc')
+            ->get();
+
+        return $this->json($response, $chats);
+    }
+
+    // ── GET /api/users/me/chats/{id} ──────────────────────────────────────────
+    public function getMessages(Request $request, Response $response, array $args): Response
+    {
+        $myId     = $request->getAttribute('auth_user')['sub'];
+        $friendId = $args['id'];
+        
+        DB::table('messages')
+            ->where('sender_id', $friendId)
+            ->where('receiver_id', $myId)
+            ->where('status', '!=', 'read')
+            ->update(['status' => 'read']);
+
+        $messages = DB::table('messages')
+            ->where(function($q) use ($myId, $friendId) {
+                $q->where('sender_id', $myId)->where('receiver_id', $friendId);
+            })
+            ->orWhere(function($q) use ($myId, $friendId) {
+                $q->where('sender_id', $friendId)->where('receiver_id', $myId);
+            })
+            ->orderBy('created_at', 'asc')
+            ->get();
+
+        return $this->json($response, $messages);
+    }
+
+    // ── POST /api/users/me/chats/{id} ─────────────────────────────────────────
+    public function sendMessage(Request $request, Response $response, array $args): Response
+    {
+        $myId     = $request->getAttribute('auth_user')['sub'];
+        $friendId = $args['id'];
+        $body     = (array) $request->getParsedBody();
+        $content  = $body['content'] ?? null;
+        $files    = $request->getUploadedFiles();
+
+        $mediaUrl  = null;
+        $mediaType = null;
+
+        if (!empty($files['media']) && $files['media']->getError() === UPLOAD_ERR_OK) {
+            $file = $files['media'];
+            $ext  = strtolower(pathinfo($file->getClientFilename(), PATHINFO_EXTENSION));
+            
+            if (in_array($ext, ['jpg', 'jpeg', 'png', 'gif', 'webp'])) {
+                $mediaType = 'image';
+            } elseif (in_array($ext, ['mp4', 'mov', 'avi', 'webm'])) {
+                $mediaType = 'video';
+            } else {
+                return $this->json($response, ['message' => 'Formato no permitido.'], 422);
+            }
+
+            // Lógica para crear la carpeta combinada con los IDs ordenados (Ej: 1-2)
+            $minId      = min($myId, $friendId);
+            $maxId      = max($myId, $friendId);
+            $folderName = $minId . '-' . $maxId;
+            
+            // Back->public->uploads->Chat Multimedia->[CarpetaCombinada]->[MiID]
+            $baseDir   = __DIR__ . '/../../public/uploads/Chat Multimedia';
+            $targetDir = $baseDir . '/' . $folderName . '/' . $myId;
+
+            if (!is_dir($targetDir)) {
+                mkdir($targetDir, 0777, true);
+            }
+
+            $filename = 'msg_' . time() . '_' . uniqid() . '.' . $ext;
+            $file->moveTo($targetDir . '/' . $filename);
+            
+            // Guardamos la ruta relativa en BD
+            $mediaUrl = 'Chat Multimedia/' . $folderName . '/' . $myId . '/' . $filename;
+        }
+
+        if (!$content && !$mediaUrl) {
+            return $this->json($response, ['message' => 'El mensaje está vacío.'], 422);
+        }
+
+        $msgId = DB::table('messages')->insertGetId([
+            'sender_id'   => $myId,
+            'receiver_id' => $friendId,
+            'content'     => $content,
+            'media_url'   => $mediaUrl,
+            'media_type'  => $mediaType,
+            'status'      => 'sent',
+            'created_at'  => date('Y-m-d H:i:s')
+        ]);
+
+        $newMessage = DB::table('messages')->where('id', $msgId)->first();
+
+        return $this->json($response, (array) $newMessage);
     }
 
     private function json(Response $response, mixed $data, int $status = 200): Response
