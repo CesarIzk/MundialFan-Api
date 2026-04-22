@@ -43,6 +43,7 @@ return function (App $app) {
             $posts->post('/{id}/like',     [PostController::class, 'toggleLike']);
             $posts->get('/{id}/comments',  [PostController::class, 'comments']);
             $posts->post('/{id}/comments', [PostController::class, 'storeComment']);
+
         })->add(JwtMiddleware::class);
 
         // ── Comentarios (eliminar) ────────────────────────────────────────────
@@ -55,6 +56,7 @@ return function (App $app) {
             $users->get('/{id}',          [UserController::class, 'show']);
             $users->put('/me',            [UserController::class, 'updateProfile']);
             $users->post('/me/avatar',    [UserController::class, 'updateAvatar']);
+            $users->post('/me/cover',     [UserController::class, 'updateCover']);
             $users->put('/me/password',   [UserController::class, 'updatePassword']);
             $users->delete('/me',         [UserController::class, 'deactivate']);
             $users->get('/me/friends',               [UserController::class, 'getFriends']);

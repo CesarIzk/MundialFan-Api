@@ -102,6 +102,42 @@ class UserController
         ]);
     }
 
+    // ── POST /api/users/me/cover ──────────────────────────────────────────────
+    public function updateCover(Request $request, Response $response): Response
+    {
+        $authUser = $request->getAttribute('auth_user');
+        $user     = User::find($authUser['sub']);
+        $files    = $request->getUploadedFiles();
+
+        if (empty($files['cover']) || $files['cover']->getError() !== UPLOAD_ERR_OK) {
+            return $this->json($response, ['message' => 'No se recibió ningún archivo.'], 422);
+        }
+
+        $file    = $files['cover'];
+        $ext     = strtolower(pathinfo($file->getClientFilename(), PATHINFO_EXTENSION));
+        $allowed = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
+
+        if (!in_array($ext, $allowed)) {
+            return $this->json($response, ['message' => 'Formato de imagen no permitido.'], 422);
+        }
+
+        $filename  = 'cover_' . $user->id . '_' . time() . '.' . $ext;
+        $uploadDir = __DIR__ . '/../../public/uploads/covers/';
+
+        if (!is_dir($uploadDir)) {
+            mkdir($uploadDir, 0755, true);
+        }
+
+        $file->moveTo($uploadDir . $filename);
+        $user->cover_picture = 'uploads/covers/' . $filename;
+        $user->save();
+
+        return $this->json($response, [
+            'message'       => 'Portada actualizada.',
+            'cover_picture' => $user->cover_picture,
+        ]);
+    }
+
     // ── PUT /api/users/me/password ────────────────────────────────────────────
     public function updatePassword(Request $request, Response $response): Response
     {
@@ -148,13 +184,13 @@ class UserController
             ->join('users', 'friendships.friend_id', '=', 'users.id')
             ->where('friendships.user_id', $myId)
             ->where('friendships.status', 'accepted')
-            ->select('users.id', 'users.name', 'users.username', 'users.profile_picture', 'users.country');
+            ->select('users.id', 'users.name', 'users.username', 'users.profile_picture', 'users.cover_picture', 'users.country');
 
         $friendsReceived = DB::table('friendships')
             ->join('users', 'friendships.user_id', '=', 'users.id')
             ->where('friendships.friend_id', $myId)
             ->where('friendships.status', 'accepted')
-            ->select('users.id', 'users.name', 'users.username', 'users.profile_picture', 'users.country');
+            ->select('users.id', 'users.name', 'users.username', 'users.profile_picture', 'users.cover_picture', 'users.country');
 
         $friends = $friendsSent->union($friendsReceived)->get();
 
@@ -172,7 +208,7 @@ class UserController
             ->join('users', 'friendships.user_id', '=', 'users.id')
             ->where('friendships.friend_id', $myId)
             ->where('friendships.status', 'pending')
-            ->select('users.id', 'users.name', 'users.username', 'users.profile_picture', 'users.country')
+            ->select('users.id', 'users.name', 'users.username', 'users.profile_picture', 'users.cover_picture', 'users.country')
             ->get();
 
         return $this->json($response, $requests);

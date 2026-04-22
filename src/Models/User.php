@@ -22,6 +22,7 @@ class User extends Model
         'city',
         'country',
         'profile_picture',
+        'cover_picture',
         'bio',
         'status',
         'total_posts',
