@@ -12,36 +12,37 @@ $dotenv->safeLoad();
 // ── Bootstrap de Eloquent ─────────────────────────────────────────────────────
 require __DIR__ . '/../bootstrap/database.php';
 
-// ── Crear app Slim ────────────────────────────────────────────────────────────
 $app = AppFactory::create();
 
-// Responder preflight OPTIONS sin pasar por el middleware de JWT
+// ① Ruta OPTIONS global — debe registrarse ANTES que cualquier middleware
 $app->options('/{routes:.+}', function ($request, $response) {
     return $response;
 });
 
-// ── Middleware de errores ─────────────────────────────────────────────────────
+// ② Rutas de la aplicación
+$routes = require __DIR__ . '/../routes.php';
+$routes($app);
+
+// ③ Middlewares (orden LIFO: el último registrado se ejecuta primero)
+
+$app->addBodyParsingMiddleware();
+$app->add(new ContentLengthMiddleware());
+
+// ErrorMiddleware envuelve todo lo de abajo → se ejecuta antes que CORS
 $app->addErrorMiddleware(
     displayErrorDetails: (bool)($_ENV['APP_DEBUG'] ?? false),
     logErrors: true,
     logErrorDetails: true
 );
 
-$app->addBodyParsingMiddleware();
-$app->add(new ContentLengthMiddleware());
-
-// ── CORS: permitir peticiones desde el frontend  ────────────
+// CORS al final del código = primero en ejecutarse (LIFO)
+// Así los headers CORS se añaden incluso en respuestas de error (404, 405, 500)
 $app->add(function ($request, $handler) {
     $response = $handler->handle($request);
-
     return $response
         ->withHeader('Access-Control-Allow-Origin',  $_ENV['FRONTEND_URL'] ?? '*')
         ->withHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With')
         ->withHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
 });
-
-// ── Rutas ─────────────────────────────────────────────────────────────────────
-$routes = require __DIR__ . '/../routes.php';
-$routes($app);
 
 $app->run();

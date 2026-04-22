@@ -94,27 +94,29 @@ class AuthController
 
     // ── Helpers ───────────────────────────────────────────────────────────────
 
-    /**
-     * Genera un JWT simple (header.payload.signature con HMAC-SHA256)
-     */
     private function generateJWT(User $user): string
-    {
-        $secret = $_ENV['JWT_SECRET'] ?? 'mundialfan_secret_key';
+{
+    $secret = $_ENV['JWT_SECRET'] ?? 'mundialfan_secret_key';
 
-        $header  = base64_encode(json_encode(['alg' => 'HS256', 'typ' => 'JWT']));
-        $payload = base64_encode(json_encode([
-            'sub'      => $user->id,
-            'name'     => $user->name,
-            'email'    => $user->email,
-            'role'     => $user->role,
-            'iat'      => time(),
-            'exp'      => time() + 86400 * 7,   // 7 días
-        ]));
+    $header  = $this->base64url(json_encode(['alg' => 'HS256', 'typ' => 'JWT']));
+    $payload = $this->base64url(json_encode([
+        'sub'  => $user->id,
+        'name' => $user->name,
+        'email'=> $user->email,
+        'role' => $user->role,
+        'iat'  => time(),
+        'exp'  => time() + 86400 * 7,
+    ]));
 
-        $signature = base64_encode(hash_hmac('sha256', "$header.$payload", $secret, true));
+    $signature = $this->base64url(hash_hmac('sha256', "$header.$payload", $secret, true));
 
-        return "$header.$payload.$signature";
-    }
+    return "$header.$payload.$signature";
+}
+
+private function base64url(string $data): string
+{
+    return rtrim(strtr(base64_encode($data), '+/', '-_'), '=');
+}
 
     private function json(Response $response, array $data, int $status = 200): Response
     {

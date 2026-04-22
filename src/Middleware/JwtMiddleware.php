@@ -31,35 +31,31 @@ class JwtMiddleware implements MiddlewareInterface
         return $handler->handle($request);
     }
 
-    /**
-     * Valida la firma y expiración del JWT.
-     * Devuelve el payload como array o false si es inválido.
-     */
-    public static function validateJWT(string $token): array|false
-    {
-        $parts = explode('.', $token);
+ public static function validateJWT(string $token): array|false
+{
+    $parts = explode('.', $token);
+    if (count($parts) !== 3) return false;
 
-        if (count($parts) !== 3) {
-            return false;
-        }
+    [$header, $payload, $signature] = $parts;
 
-        [$header, $payload, $signature] = $parts;
+    $secret   = $_ENV['JWT_SECRET'] ?? 'mundialfan_secret_key';
+    $expected = rtrim(strtr(base64_encode(
+        hash_hmac('sha256', "$header.$payload", $secret, true)
+    ), '+/', '-_'), '=');
 
-        $secret   = $_ENV['JWT_SECRET'] ?? 'mundialfan_secret_key';
-        $expected = base64_encode(hash_hmac('sha256', "$header.$payload", $secret, true));
-
-        if (!hash_equals($expected, $signature)) {
-            return false;
-        }
-
-        $data = json_decode(base64_decode($payload), true);
-
-        if (!$data || (isset($data['exp']) && $data['exp'] < time())) {
-            return false;
-        }
-
-        return $data;
+    if (!hash_equals($expected, $signature)) {
+        return false;
     }
+
+    $decoded = base64_decode(strtr($payload, '-_', '+/'));
+    $data    = json_decode($decoded, true);
+
+    if (!$data || (isset($data['exp']) && $data['exp'] < time())) {
+        return false;
+    }
+
+    return $data;
+}
 
     private function unauthorized(string $message): Response
     {
