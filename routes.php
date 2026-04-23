@@ -70,12 +70,12 @@ return function (App $app) {
             $users->post('/me/requests/{id}/accept', [UserController::class, 'acceptRequest']);
             $users->post('/me/requests/{id}/decline',[UserController::class, 'declineRequest']);
             
-        // ── Chats ─────────────────────────────────────────────────────────────
+            // ── Chats ─────────────────────────────────────────────────────────────
             $users->get('/me/chats',                 [UserController::class, 'getChats']);
             $users->get('/me/chats/{id}',            [UserController::class, 'getMessages']);
             $users->post('/me/chats/{id}',           [UserController::class, 'sendMessage']);
 
-        // ── Notificaciones ────────────────────────────────────────────────────
+            // ── Notificaciones ────────────────────────────────────────────────────
             $users->get('/me/notifications',              [NotificationController::class, 'index']);
             $users->get('/me/notifications/unread-count', [NotificationController::class, 'unreadCount']);
             $users->post('/me/notifications/read',        [NotificationController::class, 'markAllRead']);
@@ -83,11 +83,73 @@ return function (App $app) {
 
         // ── Admin ─────────────────────────────────────────────────────────────
         $api->group('/admin', function (RouteCollectorProxy $admin) {
+            // Posts
             $admin->get('/posts',                    [AdminController::class, 'posts']);
+            $admin->put('/posts/{id}',               [AdminController::class, 'updatePost']);
             $admin->put('/posts/{id}/status',        [AdminController::class, 'changePostStatus']);
             $admin->delete('/posts/{id}',            [AdminController::class, 'deletePost']);
+
+            // Usuarios
             $admin->get('/users',                    [AdminController::class, 'users']);
+            $admin->get('/users/{id}',               [AdminController::class, 'showUser']);
+            $admin->post('/users',                   [AdminController::class, 'createUser']);
+            $admin->put('/users/{id}',               [AdminController::class, 'updateUser']);
             $admin->put('/users/{id}/status',        [AdminController::class, 'changeUserStatus']);
+            $admin->delete('/users/{id}',            [AdminController::class, 'deleteUser']);
+
+            // Comentarios
+            $admin->get('/comments',                 [AdminController::class, 'comments']);
+            $admin->delete('/comments/{id}',         [AdminController::class, 'deleteComment']);
+
+            // Categorías
+            $admin->get('/categories',               [AdminController::class, 'categories']);
+            $admin->post('/categories',              [AdminController::class, 'createCategory']);
+            $admin->put('/categories/{id}',          [AdminController::class, 'updateCategory']);
+            $admin->delete('/categories/{id}',       [AdminController::class, 'deleteCategory']);
+
+            // Campeonatos
+            $admin->get('/championships',            [AdminController::class, 'championships']);
+            $admin->get('/championships/{id}',       [AdminController::class, 'showChampionship']);
+            $admin->post('/championships',           [AdminController::class, 'createChampionship']);
+            $admin->put('/championships/{id}',       [AdminController::class, 'updateChampionship']);
+            $admin->delete('/championships/{id}',    [AdminController::class, 'deleteChampionship']);
+
+            // Países
+            $admin->get('/countries',                [AdminController::class, 'adminCountries']);
+            $admin->get('/countries/{id}',           [AdminController::class, 'showCountry']);
+            $admin->post('/countries',               [AdminController::class, 'createCountry']);
+            $admin->post('/countries/{id}',          [AdminController::class, 'updateCountry']); // frontend usa _method=PUT
+            $admin->delete('/countries/{id}',        [AdminController::class, 'deleteCountry']);
+
+            // Jugadores Destacados
+            $admin->get('/featured-players',         [AdminController::class, 'featuredPlayers']);
+            $admin->get('/featured-players/{id}',    [AdminController::class, 'showFeaturedPlayer']);
+            $admin->post('/featured-players',        [AdminController::class, 'createFeaturedPlayer']);
+            $admin->put('/featured-players/{id}',    [AdminController::class, 'updateFeaturedPlayer']);
+            $admin->delete('/featured-players/{id}', [AdminController::class, 'deleteFeaturedPlayer']);
+
+            // Equipos Exitosos
+            $admin->get('/successful-teams',         [AdminController::class, 'successfulTeams']);
+            $admin->get('/successful-teams/{id}',    [AdminController::class, 'showSuccessfulTeam']);
+            $admin->post('/successful-teams',        [AdminController::class, 'createSuccessfulTeam']);
+            $admin->put('/successful-teams/{id}',    [AdminController::class, 'updateSuccessfulTeam']);
+            $admin->delete('/successful-teams/{id}', [AdminController::class, 'deleteSuccessfulTeam']);
+
+            // Admin creation & stats
+            $admin->post('/create-admin',            [AdminController::class, 'createAdmin']);
+            $admin->get('/dashboard/stats',          [AdminController::class, 'dashboardStats']);
+
+            // Reportes
+            $admin->get('/reports/metrics',          [AdminController::class, 'reportMetrics']);
+            $admin->get('/reports/daily',            [AdminController::class, 'reportDaily']);
+            $admin->get('/reports/top-users',        [AdminController::class, 'reportTopUsers']);
+            $admin->get('/reports/top-posts',        [AdminController::class, 'reportTopPosts']);
+            $admin->get('/reports/users-by-country', [AdminController::class, 'reportUsersByCountry']);
+            $admin->get('/reports/content-types',    [AdminController::class, 'reportContentTypes']);
+
+            // Logs
+            $admin->get('/logs',                     [AdminController::class, 'getLogs']);
+            $admin->delete('/logs',                  [AdminController::class, 'clearLogs']);
         })->add(JwtMiddleware::class);
 
     });
