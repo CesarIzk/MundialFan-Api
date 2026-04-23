@@ -5,6 +5,7 @@ namespace App\Controllers;
 use App\Models\Post;
 use App\Models\Comment;
 use App\Models\Like;
+use App\Models\Notification;
 use Psr\Http\Message\ResponseInterface as Response;
 use Psr\Http\Message\ServerRequestInterface as Request;
 
@@ -154,6 +155,17 @@ class PostController
         $liked = Like::toggle($post->id, $authUser['sub']);
         $post->refresh();
 
+        // Notificar al autor del post si se dio like (no si se quitó)
+        if ($liked) {
+            Notification::notify(
+                userId:     (int) $post->user_id,
+                type:       'post_like',
+                actorId:    (int) $authUser['sub'],
+                entityId:   $post->id,
+                entityType: 'post'
+            );
+        }
+
         return $this->json($response, [
             'liked'      => $liked,
             'likes_count' => $post->likes,
@@ -180,6 +192,18 @@ class PostController
 
         $comment = Comment::createAndCount($args['id'], $authUser['sub'], $content);
         $comment->load('user:id,name,profile_picture');
+
+        // Notificar al autor del post
+        $post = Post::find($args['id']);
+        if ($post) {
+            Notification::notify(
+                userId:     (int) $post->user_id,
+                type:       'post_comment',
+                actorId:    (int) $authUser['sub'],
+                entityId:   $post->id,
+                entityType: 'post'
+            );
+        }
 
         return $this->json($response, $comment, 201);
     }

@@ -7,6 +7,8 @@ use App\Controllers\AdminController;
 use App\Controllers\CategoryController;
 use App\Controllers\CountryController;
 use App\Controllers\ChampionshipController;
+use App\Controllers\NotificationController;
+use App\Controllers\NotificationStream;
 use App\Middleware\JwtMiddleware;
 use Slim\App;
 use Slim\Routing\RouteCollectorProxy;
@@ -50,6 +52,9 @@ return function (App $app) {
         $api->delete('/comments/{id}', [PostController::class, 'destroyComment'])
             ->add(JwtMiddleware::class);
 
+        // ── Notificaciones: SSE (fuera del grupo JWT, se autentica via ?token=) ──
+        $api->get('/users/me/notifications/stream', [NotificationStream::class, 'stream']);
+
         // ── Usuarios ──────────────────────────────────────────────────────────
         $api->group('/users', function (RouteCollectorProxy $users) {
             $users->get('',               [UserController::class, 'search']);
@@ -69,6 +74,11 @@ return function (App $app) {
             $users->get('/me/chats',                 [UserController::class, 'getChats']);
             $users->get('/me/chats/{id}',            [UserController::class, 'getMessages']);
             $users->post('/me/chats/{id}',           [UserController::class, 'sendMessage']);
+
+        // ── Notificaciones ────────────────────────────────────────────────────
+            $users->get('/me/notifications',              [NotificationController::class, 'index']);
+            $users->get('/me/notifications/unread-count', [NotificationController::class, 'unreadCount']);
+            $users->post('/me/notifications/read',        [NotificationController::class, 'markAllRead']);
         })->add(JwtMiddleware::class);
 
         // ── Admin ─────────────────────────────────────────────────────────────

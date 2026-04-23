@@ -5,6 +5,7 @@ namespace App\Controllers;
 use Illuminate\Database\Capsule\Manager as DB;
 use App\Models\User;
 use App\Models\Post;
+use App\Models\Notification;
 use Psr\Http\Message\ResponseInterface as Response;
 use Psr\Http\Message\ServerRequestInterface as Request;
 
@@ -229,6 +230,14 @@ class UserController
                 'friend_id' => $friendId,
                 'status'    => 'pending'
             ]);
+
+            Notification::notify(
+                userId:     (int) $friendId,
+                type:       'friend_request',
+                actorId:    (int) $myId,
+                entityId:   (int) $myId,
+                entityType: 'user'
+            );
         }
 
         return $this->json($response, ['message' => 'Solicitud enviada.']);
@@ -245,6 +254,14 @@ class UserController
             ->where('friend_id', $myId)
             ->where('user_id', $senderId)
             ->update(['status' => 'accepted']);
+
+        Notification::notify(
+            userId:     (int) $senderId,
+            type:       'friend_accepted',
+            actorId:    (int) $myId,
+            entityId:   (int) $myId,
+            entityType: 'user'
+        );
 
         return $this->json($response, ['message' => 'Solicitud aceptada.']);
     }
@@ -361,6 +378,14 @@ class UserController
         ]);
 
         $newMessage = DB::table('messages')->where('id', $msgId)->first();
+
+        Notification::notify(
+            userId:     (int) $friendId,
+            type:       'message',
+            actorId:    (int) $myId,
+            entityId:   $msgId,
+            entityType: 'message'
+        );
 
         return $this->json($response, (array) $newMessage);
     }
