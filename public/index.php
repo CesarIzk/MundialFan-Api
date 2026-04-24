@@ -32,11 +32,14 @@ $app->addErrorMiddleware(
 
 // CORS al final del código = primero en ejecutarse (LIFO)
 $app->add(function ($request, $handler) {
+    $allowedOrigin = $_ENV['FRONTEND_URL'] ?? $request->getHeaderLine('Origin') ?: '*';
+
     // ← NUEVO: responder preflight aquí mismo, sin pasar al handler
     if ($request->getMethod() === 'OPTIONS') {
         $response = new \Slim\Psr7\Response();
         return $response
-            ->withHeader('Access-Control-Allow-Origin',  $_ENV['FRONTEND_URL'] ?? '*')
+            ->withHeader('Access-Control-Allow-Origin', $allowedOrigin)
+            ->withHeader('Access-Control-Allow-Credentials', 'true')
             ->withHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With')
             ->withHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS')
             ->withStatus(200);
@@ -44,7 +47,8 @@ $app->add(function ($request, $handler) {
 
     $response = $handler->handle($request);
     return $response
-        ->withHeader('Access-Control-Allow-Origin',  $_ENV['FRONTEND_URL'] ?? '*')
+        ->withHeader('Access-Control-Allow-Origin', $allowedOrigin)
+        ->withHeader('Access-Control-Allow-Credentials', 'true')
         ->withHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With')
         ->withHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
 });

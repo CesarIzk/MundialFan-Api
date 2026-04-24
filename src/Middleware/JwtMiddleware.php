@@ -65,6 +65,7 @@ class JwtMiddleware implements MiddlewareInterface
         return $response
             ->withHeader('Content-Type', 'application/json')
             ->withHeader('Access-Control-Allow-Origin',  $_ENV['FRONTEND_URL'] ?? '*')
+            ->withHeader('Access-Control-Allow-Credentials', 'true')
             ->withHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With')
             ->withHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
     }
