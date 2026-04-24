@@ -1,6 +1,6 @@
 [build]
 builder = "NIXPACKS"
-nixpacksConfigPath = "nixpack.toml"
+nixpacksConfigPath = "nixpacks.toml"
 
 [deploy]
-startCommand = "php -S 0.0.0.0:${PORT:-8080} -t public"
+startCommand = "php82 -S 0.0.0.0:$PORT -t public"
