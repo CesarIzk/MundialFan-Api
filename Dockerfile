@@ -1,7 +1,10 @@
 FROM php:8.2-apache
 
-# Extensiones necesarias para MySQL + Eloquent
-RUN docker-php-ext-install pdo pdo_mysql
+# Extensiones necesarias
+RUN apt-get update && apt-get install -y \
+    libzip-dev \
+    unzip \
+    && docker-php-ext-install pdo pdo_mysql zip
 
 # Instalar Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
