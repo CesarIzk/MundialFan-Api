@@ -32,7 +32,7 @@ $app->addErrorMiddleware(
 
 // CORS al final del código = primero en ejecutarse (LIFO)
 $app->add(function ($request, $handler) {
-    $origin = $request->getHeaderLine('Origin') ?: '*';
+    $origin = $request->getHeaderLine('Origin');
     $allowedOrigins = [
         'https://mundialmcu.netlify.app',
         'http://localhost:3000',
@@ -40,22 +40,27 @@ $app->add(function ($request, $handler) {
         'http://0.0.0.0:8080'
     ];
 
-    // Use specific origin if it's in the whitelist, otherwise use wildcard
+    // Validar que el origen esté en la lista blanca
     $allowedOrigin = in_array($origin, $allowedOrigins) ? $origin : 'https://mundialmcu.netlify.app';
 
-    // Responder preflight OPTIONS
+    // Responder directamente a OPTIONS sin pasar por el handler
     if ($request->getMethod() === 'OPTIONS') {
-        $response = $handler->handle($request);
-    } else {
-        $response = $handler->handle($request);
+        $response = new \Slim\Psr7\Response();
+        return $response
+            ->withStatus(200)
+            ->withHeader('Access-Control-Allow-Origin', $allowedOrigin)
+            ->withHeader('Access-Control-Allow-Credentials', 'true')
+            ->withHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With')
+            ->withHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS')
+            ->withHeader('Access-Control-Max-Age', '86400');
     }
 
+    $response = $handler->handle($request);
     return $response
         ->withHeader('Access-Control-Allow-Origin', $allowedOrigin)
         ->withHeader('Access-Control-Allow-Credentials', 'true')
         ->withHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With')
-        ->withHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS')
-        ->withHeader('Access-Control-Max-Age', '86400');
+        ->withHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
 });
 
 $app->run();

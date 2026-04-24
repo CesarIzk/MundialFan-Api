@@ -1,0 +1,6 @@
+.idea
+vendor/
+
+# Ignorar archivos multimedia subidos por los usuarios
+Back/public/uploads/
+uploads/
