@@ -12,12 +12,7 @@ $dotenv->safeLoad();
 // ── Bootstrap de Eloquent ─────────────────────────────────────────────────────
 require __DIR__ . '/../bootstrap/database.php';
 
-$app = AppFactory::create();
-
-// ① Ruta OPTIONS global — debe registrarse ANTES que cualquier middleware
-$app->options('/{routes:.+}', function ($request, $response) {
-    return $response;
-});
+$app = AppFactory::create();;
 
 // ② Rutas de la aplicación
 $routes = require __DIR__ . '/../routes.php';
