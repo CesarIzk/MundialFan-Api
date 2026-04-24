@@ -15,4 +15,4 @@ nixPkgs = [
 cmds = ["composer install --no-dev --optimize-autoloader"]
 
 [start]
-cmd = "php82 -S 0.0.0.0:${PORT:-8080} -t public"
+cmd = "php -S 0.0.0.0:${PORT:-8080} -t public public/index.php"
