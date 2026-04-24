@@ -7,11 +7,12 @@ nixPkgs = [
   "php82Extensions.tokenizer",
   "php82Extensions.fileinfo",
   "php82Extensions.curl",
-  "php82Extensions.gd"
+  "php82Extensions.gd",
+  "php82Packages.composer"
 ]
 
 [phases.install]
 cmds = ["composer install --no-dev --optimize-autoloader"]
 
 [start]
-cmd = "php -S 0.0.0.0:${PORT:-8080} -t public"
+cmd = "php82 -S 0.0.0.0:${PORT:-8080} -t public"
