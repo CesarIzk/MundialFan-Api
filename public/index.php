@@ -32,7 +32,16 @@ $app->addErrorMiddleware(
 
 // CORS al final del código = primero en ejecutarse (LIFO)
 $app->add(function ($request, $handler) {
-    $allowedOrigin = $_ENV['FRONTEND_URL'] ?? $request->getHeaderLine('Origin') ?: '*';
+    $origin = $request->getHeaderLine('Origin');
+    $allowedOrigins = [
+        'https://mundialmcu.netlify.app',
+        'http://localhost:3000',
+        'http://localhost:8080',
+        'http://0.0.0.0:8080'
+    ];
+
+    // Use specific origin if it's in the whitelist, otherwise use FRONTEND_URL env var
+    $allowedOrigin = in_array($origin, $allowedOrigins) ? $origin : ($_ENV['FRONTEND_URL'] ?? 'https://mundialmcu.netlify.app');
 
     // ← NUEVO: responder preflight aquí mismo, sin pasar al handler
     if ($request->getMethod() === 'OPTIONS') {
