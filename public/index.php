@@ -59,3 +59,5 @@ $app->addErrorMiddleware(
     logErrors: true,
     logErrorDetails: true
 );
+
+$app->run(); // ← falta esta línea
