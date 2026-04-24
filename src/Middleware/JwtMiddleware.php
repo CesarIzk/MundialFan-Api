@@ -62,6 +62,10 @@ class JwtMiddleware implements MiddlewareInterface
         $factory  = new ResponseFactory();
         $response = $factory->createResponse(401);
         $response->getBody()->write(json_encode(['message' => $message]));
-        return $response->withHeader('Content-Type', 'application/json');
+        return $response
+            ->withHeader('Content-Type', 'application/json')
+            ->withHeader('Access-Control-Allow-Origin',  $_ENV['FRONTEND_URL'] ?? '*')
+            ->withHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With')
+            ->withHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
     }
 }
