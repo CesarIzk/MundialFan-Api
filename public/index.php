@@ -32,7 +32,7 @@ $app->addErrorMiddleware(
 
 // CORS al final del código = primero en ejecutarse (LIFO)
 $app->add(function ($request, $handler) {
-    $origin = $request->getHeaderLine('Origin');
+    $origin = $request->getHeaderLine('Origin') ?: '*';
     $allowedOrigins = [
         'https://mundialmcu.netlify.app',
         'http://localhost:3000',
@@ -40,26 +40,22 @@ $app->add(function ($request, $handler) {
         'http://0.0.0.0:8080'
     ];
 
-    // Use specific origin if it's in the whitelist, otherwise use FRONTEND_URL env var
-    $allowedOrigin = in_array($origin, $allowedOrigins) ? $origin : ($_ENV['FRONTEND_URL'] ?? 'https://mundialmcu.netlify.app');
+    // Use specific origin if it's in the whitelist, otherwise use wildcard
+    $allowedOrigin = in_array($origin, $allowedOrigins) ? $origin : 'https://mundialmcu.netlify.app';
 
-    // ← NUEVO: responder preflight aquí mismo, sin pasar al handler
+    // Responder preflight OPTIONS
     if ($request->getMethod() === 'OPTIONS') {
-        $response = new \Slim\Psr7\Response();
-        return $response
-            ->withHeader('Access-Control-Allow-Origin', $allowedOrigin)
-            ->withHeader('Access-Control-Allow-Credentials', 'true')
-            ->withHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With')
-            ->withHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS')
-            ->withStatus(200);
+        $response = $handler->handle($request);
+    } else {
+        $response = $handler->handle($request);
     }
 
-    $response = $handler->handle($request);
     return $response
         ->withHeader('Access-Control-Allow-Origin', $allowedOrigin)
         ->withHeader('Access-Control-Allow-Credentials', 'true')
         ->withHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With')
-        ->withHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
+        ->withHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS')
+        ->withHeader('Access-Control-Max-Age', '86400');
 });
 
 $app->run();
