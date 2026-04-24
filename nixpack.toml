@@ -1,13 +1,18 @@
-[build]
-builder = "NIXPACKS"
+[phases.setup]
+nixPkgs = [
+  "php82",
+  "php82Extensions.pdo",
+  "php82Extensions.pdo_mysql",
+  "php82Extensions.mbstring",
+  "php82Extensions.tokenizer",
+  "php82Extensions.fileinfo",
+  "php82Extensions.curl",
+  "php82Extensions.gd",
+  "composer"
+]
 
-[build.nixpacks]
-# Forzar PHP 8.2 y NO instalar nginx automáticamente
-nixpkgs = ["php82", "php82Extensions.pdo", "php82Extensions.pdo_mysql", "php82Extensions.mbstring", "php82Extensions.tokenizer"]
+[phases.install]
+cmds = ["composer install --no-dev --optimize-autoloader"]
 
-[phases]
-setup = { nixPkgs = ["php82", "composer"] }
-install = { cmds = ["composer install --no-dev --optimize-autoloader"] }
-
-[deploy]
-startCommand = "php -S 0.0.0.0:${PORT} -t public"
+[start]
+cmd = "php -S 0.0.0.0:${PORT:-8080} -t public"
