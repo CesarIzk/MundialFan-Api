@@ -2,10 +2,10 @@
 
 return [
     "database" => [
-        "host" => "localhost",
+        "host" => "centerbeam.proxy.rlwy.net",
         "user" => "root",
-        "password" => "root",
+        "password" => "EwebDfGLTEAdcqOwJpMbELbIlyXabWhX",
         "dbname" => "mundialfan",
-        "port" => "3306",
+        "port" => "35011",
     ],
 ];
