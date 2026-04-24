@@ -34,6 +34,9 @@ return function (App $app) {
         // ── Campeonatos (públicas) ────────────────────────────────────────────
         $api->get('/championships',  [ChampionshipController::class, 'index']);
 
+        // ── Estadísticas públicas ─────────────────────────────────────────────
+        $api->get('/stats/general',  [ChampionshipController::class, 'statsGeneral']);
+
         // ── Posts (GET público, resto protegido) ──────────────────────────────
         $api->get('/posts',     [PostController::class, 'index']);   // público
         $api->get('/posts/{id}', [PostController::class, 'show']);   // público
@@ -107,13 +110,12 @@ return function (App $app) {
             $admin->put('/categories/{id}',          [AdminController::class, 'updateCategory']);
             $admin->delete('/categories/{id}',       [AdminController::class, 'deleteCategory']);
 
-            // Campeonatos
-            $admin->get('/championships',            [AdminController::class, 'championships']);
-            $admin->get('/championships/{id}',       [AdminController::class, 'showChampionship']);
-            $admin->post('/championships',           [AdminController::class, 'createChampionship']);
-            $admin->put('/championships/{id}',       [AdminController::class, 'updateChampionship']);
-            $admin->delete('/championships/{id}',    [AdminController::class, 'deleteChampionship']);
-
+           // Campeonatos
+$admin->get('/championships',            [ChampionshipController::class, 'adminIndex']);
+$admin->get('/championships/{id}',       [ChampionshipController::class, 'adminShow']);
+$admin->post('/championships',           [ChampionshipController::class, 'adminCreate']);
+$admin->put('/championships/{id}',       [ChampionshipController::class, 'adminUpdate']);
+$admin->delete('/championships/{id}',    [ChampionshipController::class, 'adminDelete']);
             // Países
             $admin->get('/countries',                [AdminController::class, 'adminCountries']);
             $admin->get('/countries/{id}',           [AdminController::class, 'showCountry']);

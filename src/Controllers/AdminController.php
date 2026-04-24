@@ -90,7 +90,7 @@ class AdminController
         return $this->json($response, ['message' => "Publicación marcada como '{$status}'."]);
     }
 
-    // ── PUT /api/admin/posts/{id} (alias: cambia status desde publicaciones.html) ──
+    // ── PUT /api/admin/posts/{id} ────────────────────────────────────────────
     public function updatePost(Request $request, Response $response, array $args): Response
     {
         $this->requireAdmin($request);
@@ -237,8 +237,6 @@ class AdminController
 
         $body = (array) $request->getParsedBody();
 
-        // Admite actualización de status independiente (desde el botón toggle de la tabla)
-        // o actualización completa desde el modal
         if (isset($body['status'])) {
             if (!in_array($body['status'], ['active', 'inactive'])) {
                 return $this->json($response, ['message' => 'Estado inválido.'], 422);
@@ -345,7 +343,6 @@ class AdminController
             return $this->json($response, ['message' => 'Comentario no encontrado.'], 404);
         }
 
-        // Decrementar contador en el post
         DB::table('posts')->where('id', $comment->post_id)->decrement('comments_count');
         $comment->delete();
 
@@ -431,117 +428,6 @@ class AdminController
 
         DB::table('categories')->where('id', $args['id'])->delete();
         return $this->json($response, ['message' => 'Categoría eliminada.']);
-    }
-
-    // ════════════════════════════════════════════════════════════════════════
-    // CAMPEONATOS
-    // ════════════════════════════════════════════════════════════════════════
-
-    // ── GET /api/admin/championships ─────────────────────────────────────────
-    public function championships(Request $request, Response $response): Response
-    {
-        $this->requireAdmin($request);
-
-        $q = trim($request->getQueryParams()['q'] ?? '');
-
-        $query = DB::table('championships')->orderBy('year', 'desc');
-
-        if ($q) {
-            $query->where(function ($qb) use ($q) {
-                $qb->where('host',     'like', "%{$q}%")
-                   ->orWhere('year',   'like', "%{$q}%")
-                   ->orWhere('champion','like', "%{$q}%");
-            });
-        }
-
-        return $this->json($response, $query->get());
-    }
-
-    // ── GET /api/admin/championships/{id} ─────────────────────────────────────
-    public function showChampionship(Request $request, Response $response, array $args): Response
-    {
-        $this->requireAdmin($request);
-
-        $champ = DB::table('championships')->where('id', $args['id'])->first();
-        if (!$champ) {
-            return $this->json($response, ['message' => 'Campeonato no encontrado.'], 404);
-        }
-
-        return $this->json($response, $champ);
-    }
-
-    // ── POST /api/admin/championships ─────────────────────────────────────────
-    public function createChampionship(Request $request, Response $response): Response
-    {
-        $this->requireAdmin($request);
-
-        $body = (array) $request->getParsedBody();
-
-        $id = DB::table('championships')->insertGetId([
-            'year'         => $body['year']         ?? null,
-            'host'         => $body['host']         ?? null,
-            'champion'     => $body['champion']     ?? null,
-            'runner_up'    => $body['runner_up']    ?? null,
-            'third_place'  => $body['third_place']  ?? null,
-            'fourth_place' => $body['fourth_place'] ?? null,
-            'teams'        => $body['teams']        ?? 0,
-            'matches'      => $body['matches']      ?? 0,
-            'goals'        => $body['goals']        ?? 0,
-            'golden_ball'  => $body['golden_ball']  ?? null,
-            'top_scorer'   => $body['top_scorer']   ?? null,
-            'golden_glove' => $body['golden_glove'] ?? null,
-            'best_young'   => $body['best_young']   ?? null,
-            'created_at'   => date('Y-m-d H:i:s'),
-            'updated_at'   => date('Y-m-d H:i:s'),
-        ]);
-
-        return $this->json($response, ['message' => 'Campeonato creado.', 'id' => $id], 201);
-    }
-
-    // ── PUT /api/admin/championships/{id} ─────────────────────────────────────
-    public function updateChampionship(Request $request, Response $response, array $args): Response
-    {
-        $this->requireAdmin($request);
-
-        $exists = DB::table('championships')->where('id', $args['id'])->exists();
-        if (!$exists) {
-            return $this->json($response, ['message' => 'Campeonato no encontrado.'], 404);
-        }
-
-        $body = (array) $request->getParsedBody();
-
-        DB::table('championships')->where('id', $args['id'])->update([
-            'year'         => $body['year']         ?? null,
-            'host'         => $body['host']         ?? null,
-            'champion'     => $body['champion']     ?? null,
-            'runner_up'    => $body['runner_up']    ?? null,
-            'third_place'  => $body['third_place']  ?? null,
-            'fourth_place' => $body['fourth_place'] ?? null,
-            'teams'        => $body['teams']        ?? 0,
-            'matches'      => $body['matches']      ?? 0,
-            'goals'        => $body['goals']        ?? 0,
-            'golden_ball'  => $body['golden_ball']  ?? null,
-            'top_scorer'   => $body['top_scorer']   ?? null,
-            'golden_glove' => $body['golden_glove'] ?? null,
-            'best_young'   => $body['best_young']   ?? null,
-            'updated_at'   => date('Y-m-d H:i:s'),
-        ]);
-
-        return $this->json($response, ['message' => 'Campeonato actualizado.']);
-    }
-
-    // ── DELETE /api/admin/championships/{id} ──────────────────────────────────
-    public function deleteChampionship(Request $request, Response $response, array $args): Response
-    {
-        $this->requireAdmin($request);
-
-        $exists = DB::table('championships')->where('id', $args['id'])->exists();
-        if (!$exists) {
-            return $this->json($response, ['message' => 'Campeonato no encontrado.'], 404);
-        }
-
-        DB::table('championships')->where('id', $args['id'])->delete();
-        return $this->json($response, ['message' => 'Campeonato eliminado.']);
     }
 
     // ════════════════════════════════════════════════════════════════════════
@@ -648,7 +534,7 @@ class AdminController
         return $this->json($response, ['message' => 'País creado.', 'id' => $countryId], 201);
     }
 
-    // ── POST /api/admin/countries/{id}  (frontend usa POST con _method=PUT) ───
+    // ── POST /api/admin/countries/{id} ────────────────────────────────────────
     public function updateCountry(Request $request, Response $response, array $args): Response
     {
         $this->requireAdmin($request);
@@ -739,82 +625,83 @@ class AdminController
     // ════════════════════════════════════════════════════════════════════════
 
     // ── GET /api/admin/featured-players ──────────────────────────────────────
-public function featuredPlayers(Request $request, Response $response): Response
-{
-    $this->requireAdmin($request);
+    public function featuredPlayers(Request $request, Response $response): Response
+    {
+        $this->requireAdmin($request);
 
-    $q = trim($request->getQueryParams()['q'] ?? '');
+        $q = trim($request->getQueryParams()['q'] ?? '');
 
-    $query = DB::table('featured_players')
-        ->select('featured_players.*')
-        ->orderBy('featured_players.name');
+        $query = DB::table('featured_players')
+            ->select('featured_players.*')
+            ->orderBy('featured_players.name');
 
-    if ($q) {
-        $query->where(function ($qb) use ($q) {
-            $qb->where('featured_players.name', 'like', "%{$q}%")
-               ->orWhere('featured_players.country', 'like', "%{$q}%");
-        });
+        if ($q) {
+            $query->where(function ($qb) use ($q) {
+                $qb->where('featured_players.name', 'like', "%{$q}%")
+                   ->orWhere('featured_players.country', 'like', "%{$q}%");
+            });
+        }
+
+        $players = $query->get();
+
+        return $this->json($response, $players);
     }
-
-    $players = $query->get();
-
-    return $this->json($response, $players);
-}
 
     // ── GET /api/admin/featured-players/{id} ──────────────────────────────────
-public function showFeaturedPlayer(Request $request, Response $response, array $args): Response
-{
-    $this->requireAdmin($request);
+    public function showFeaturedPlayer(Request $request, Response $response, array $args): Response
+    {
+        $this->requireAdmin($request);
 
-    $player = DB::table('featured_players')->where('id', $args['id'])->first();
-    if (!$player) {
-        return $this->json($response, ['message' => 'Jugador no encontrado.'], 404);
+        $player = DB::table('featured_players')->where('id', $args['id'])->first();
+        if (!$player) {
+            return $this->json($response, ['message' => 'Jugador no encontrado.'], 404);
+        }
+
+        return $this->json($response, $player);
     }
-
-    return $this->json($response, $player);
-}
 
     // ── POST /api/admin/featured-players ──────────────────────────────────────
-public function createFeaturedPlayer(Request $request, Response $response): Response
-{
-    $this->requireAdmin($request);
+    public function createFeaturedPlayer(Request $request, Response $response): Response
+    {
+        $this->requireAdmin($request);
 
-    $body = (array) $request->getParsedBody();
+        $body = (array) $request->getParsedBody();
 
-    $id = DB::table('featured_players')->insertGetId([
-        'name'         => trim($body['name']        ?? ''),
-        'country'      => $body['country']          ?? null,
-        'achievements' => $body['achievements']     ?? null,
-        'photo'        => $body['photo']            ?? null,
-        'created_at'   => date('Y-m-d H:i:s'),
-        'updated_at'   => date('Y-m-d H:i:s'),
-    ]);
+        $id = DB::table('featured_players')->insertGetId([
+            'name'         => trim($body['name']        ?? ''),
+            'country'      => $body['country']          ?? null,
+            'achievements' => $body['achievements']     ?? null,
+            'photo'        => $body['photo']            ?? null,
+            'created_at'   => date('Y-m-d H:i:s'),
+            'updated_at'   => date('Y-m-d H:i:s'),
+        ]);
 
-    return $this->json($response, ['message' => 'Jugador creado.', 'id' => $id], 201);
-}
-
-    // ── PUT /api/admin/featured-players/{id} ──────────────────────────────────
-public function updateFeaturedPlayer(Request $request, Response $response, array $args): Response
-{
-    $this->requireAdmin($request);
-
-    $exists = DB::table('featured_players')->where('id', $args['id'])->exists();
-    if (!$exists) {
-        return $this->json($response, ['message' => 'Jugador no encontrado.'], 404);
+        return $this->json($response, ['message' => 'Jugador creado.', 'id' => $id], 201);
     }
 
-    $body = (array) $request->getParsedBody();
+    // ── PUT /api/admin/featured-players/{id} ──────────────────────────────────
+    public function updateFeaturedPlayer(Request $request, Response $response, array $args): Response
+    {
+        $this->requireAdmin($request);
 
-    DB::table('featured_players')->where('id', $args['id'])->update([
-        'name'         => trim($body['name']     ?? ''),
-        'country'      => $body['country']       ?? null,
-        'achievements' => $body['achievements']  ?? null,
-        'photo'        => $body['photo']         ?? null,
-        'updated_at'   => date('Y-m-d H:i:s'),
-    ]);
+        $exists = DB::table('featured_players')->where('id', $args['id'])->exists();
+        if (!$exists) {
+            return $this->json($response, ['message' => 'Jugador no encontrado.'], 404);
+        }
 
-    return $this->json($response, ['message' => 'Jugador actualizado.']);
-}
+        $body = (array) $request->getParsedBody();
+
+        DB::table('featured_players')->where('id', $args['id'])->update([
+            'name'         => trim($body['name']     ?? ''),
+            'country'      => $body['country']       ?? null,
+            'achievements' => $body['achievements']  ?? null,
+            'photo'        => $body['photo']         ?? null,
+            'updated_at'   => date('Y-m-d H:i:s'),
+        ]);
+
+        return $this->json($response, ['message' => 'Jugador actualizado.']);
+    }
+
     // ── DELETE /api/admin/featured-players/{id} ───────────────────────────────
     public function deleteFeaturedPlayer(Request $request, Response $response, array $args): Response
     {
@@ -833,75 +720,78 @@ public function updateFeaturedPlayer(Request $request, Response $response, array
     // EQUIPOS EXITOSOS
     // ════════════════════════════════════════════════════════════════════════
 
-   // ── GET /api/admin/successful-teams ──────────────────────────────────────
-public function successfulTeams(Request $request, Response $response): Response
-{
-    $this->requireAdmin($request);
+    // ── GET /api/admin/successful-teams ──────────────────────────────────────
+    public function successfulTeams(Request $request, Response $response): Response
+    {
+        $this->requireAdmin($request);
 
-    $q = trim($request->getQueryParams()['q'] ?? '');
+        $q = trim($request->getQueryParams()['q'] ?? '');
 
-    $query = DB::table('successful_teams')
-        ->orderBy('titles', 'desc');
+        $query = DB::table('successful_teams')
+            ->orderBy('titles', 'desc');
 
-    if ($q) {
-        $query->where('name', 'like', "%{$q}%");
+        if ($q) {
+            $query->where('name', 'like', "%{$q}%");
+        }
+
+        $teams = $query->get();
+
+        return $this->json($response, $teams);
     }
 
-    $teams = $query->get();
-
-    return $this->json($response, $teams);
-}
     // ── GET /api/admin/successful-teams/{id} ──────────────────────────────────
-public function showSuccessfulTeam(Request $request, Response $response, array $args): Response
-{
-    $this->requireAdmin($request);
+    public function showSuccessfulTeam(Request $request, Response $response, array $args): Response
+    {
+        $this->requireAdmin($request);
 
-    $team = DB::table('successful_teams')->where('id', $args['id'])->first();
-    if (!$team) {
-        return $this->json($response, ['message' => 'Equipo no encontrado.'], 404);
+        $team = DB::table('successful_teams')->where('id', $args['id'])->first();
+        if (!$team) {
+            return $this->json($response, ['message' => 'Equipo no encontrado.'], 404);
+        }
+
+        return $this->json($response, $team);
     }
-
-    return $this->json($response, $team);
-}
 
     // ── POST /api/admin/successful-teams ──────────────────────────────────────
-public function createSuccessfulTeam(Request $request, Response $response): Response
-{
-    $this->requireAdmin($request);
+    public function createSuccessfulTeam(Request $request, Response $response): Response
+    {
+        $this->requireAdmin($request);
 
-    $body = (array) $request->getParsedBody();
+        $body = (array) $request->getParsedBody();
 
-    $id = DB::table('successful_teams')->insertGetId([
-        'name'          => trim($body['name']      ?? ''),
-        'flag'          => $body['flag']           ?? null,
-        'titles'        => $body['titles']         ?? 0,
-        'created_at'    => date('Y-m-d H:i:s'),
-        'updated_at'    => date('Y-m-d H:i:s'),
-    ]);
+        $id = DB::table('successful_teams')->insertGetId([
+            'name'          => trim($body['name']      ?? ''),
+            'flag'          => $body['flag']           ?? null,
+            'titles'        => $body['titles']         ?? 0,
+            'created_at'    => date('Y-m-d H:i:s'),
+            'updated_at'    => date('Y-m-d H:i:s'),
+        ]);
 
-    return $this->json($response, ['message' => 'Equipo creado.', 'id' => $id], 201);
-}
-    // ── PUT /api/admin/successful-teams/{id} ──────────────────────────────────
-public function updateSuccessfulTeam(Request $request, Response $response, array $args): Response
-{
-    $this->requireAdmin($request);
-
-    $exists = DB::table('successful_teams')->where('id', $args['id'])->exists();
-    if (!$exists) {
-        return $this->json($response, ['message' => 'Equipo no encontrado.'], 404);
+        return $this->json($response, ['message' => 'Equipo creado.', 'id' => $id], 201);
     }
 
-    $body = (array) $request->getParsedBody();
+    // ── PUT /api/admin/successful-teams/{id} ──────────────────────────────────
+    public function updateSuccessfulTeam(Request $request, Response $response, array $args): Response
+    {
+        $this->requireAdmin($request);
 
-    DB::table('successful_teams')->where('id', $args['id'])->update([
-        'name'          => trim($body['name']      ?? ''),
-        'flag'          => $body['flag']           ?? null,
-        'titles'        => $body['titles']         ?? 0,
-        'updated_at'    => date('Y-m-d H:i:s'),
-    ]);
+        $exists = DB::table('successful_teams')->where('id', $args['id'])->exists();
+        if (!$exists) {
+            return $this->json($response, ['message' => 'Equipo no encontrado.'], 404);
+        }
 
-    return $this->json($response, ['message' => 'Equipo actualizado.']);
-}
+        $body = (array) $request->getParsedBody();
+
+        DB::table('successful_teams')->where('id', $args['id'])->update([
+            'name'          => trim($body['name']      ?? ''),
+            'flag'          => $body['flag']           ?? null,
+            'titles'        => $body['titles']         ?? 0,
+            'updated_at'    => date('Y-m-d H:i:s'),
+        ]);
+
+        return $this->json($response, ['message' => 'Equipo actualizado.']);
+    }
+
     // ── DELETE /api/admin/successful-teams/{id} ───────────────────────────────
     public function deleteSuccessfulTeam(Request $request, Response $response, array $args): Response
     {
@@ -931,7 +821,6 @@ public function updateSuccessfulTeam(Request $request, Response $response, array
         $body          = (array) $request->getParsedBody();
         $adminPassword = $body['confirm_admin_password'] ?? '';
 
-        // Verificar contraseña del admin actual
         if ($currentUser->password !== $adminPassword) {
             return $this->json($response, ['message' => 'Tu contraseña de confirmación es incorrecta.'], 403);
         }
@@ -968,7 +857,7 @@ public function updateSuccessfulTeam(Request $request, Response $response, array
     }
 
     // ════════════════════════════════════════════════════════════════════════
-    // DASHBOARD — Stats
+    // DASHBOARD
     // ════════════════════════════════════════════════════════════════════════
 
     // ── GET /api/admin/dashboard/stats ───────────────────────────────────────
@@ -1022,7 +911,6 @@ public function updateSuccessfulTeam(Request $request, Response $response, array
 
         $avgLikes = $totalPosts > 0 ? round($totalLikes / $totalPosts, 1) : 0;
 
-        // Comparar con período anterior de la misma duración
         $days      = max(1, (int)((strtotime($dateEnd) - strtotime($dateStart)) / 86400));
         $prevStart = date('Y-m-d', strtotime($dateStart) - $days * 86400);
         $prevEnd   = date('Y-m-d', strtotime($dateStart) - 86400);
@@ -1058,7 +946,6 @@ public function updateSuccessfulTeam(Request $request, Response $response, array
         $dateEnd   = $params['fecha_fin']    ?? date('Y-m-d');
         $limit     = (int) ($params['limit'] ?? 30);
 
-        // Nuevos usuarios por día
         $userRows = DB::table('users')
             ->selectRaw('DATE(created_at) AS date, COUNT(*) AS new_users')
             ->whereBetween(DB::raw('DATE(created_at)'), [$dateStart, $dateEnd])
@@ -1066,7 +953,6 @@ public function updateSuccessfulTeam(Request $request, Response $response, array
             ->get()
             ->keyBy('date');
 
-        // Nuevas publicaciones y likes por día
         $postRows = DB::table('posts')
             ->selectRaw('DATE(created_at) AS date, COUNT(*) AS new_posts, SUM(likes) AS total_likes')
             ->whereBetween(DB::raw('DATE(created_at)'), [$dateStart, $dateEnd])
@@ -1074,7 +960,6 @@ public function updateSuccessfulTeam(Request $request, Response $response, array
             ->get()
             ->keyBy('date');
 
-        // Combinar por fecha
         $dates = collect();
         $current = strtotime($dateStart);
         $end     = strtotime($dateEnd);
@@ -1212,7 +1097,6 @@ public function updateSuccessfulTeam(Request $request, Response $response, array
     {
         $this->requireAdmin($request);
 
-        // Intentar leer desde tabla si existe, si no desde archivo
         try {
             $logs = DB::table('admin_logs')
                 ->orderBy('created_at', 'desc')
@@ -1227,7 +1111,6 @@ public function updateSuccessfulTeam(Request $request, Response $response, array
                 });
             return $this->json($response, $logs);
         } catch (\Exception $e) {
-            // Fallback: leer archivo de log de PHP/Slim si existe
             $logFile = __DIR__ . '/../../logs/app.log';
             if (!file_exists($logFile)) {
                 return $this->json($response, []);
