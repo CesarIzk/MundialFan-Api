@@ -30,7 +30,7 @@ $app->addErrorMiddleware(
     logErrorDetails: true
 );
 
-// CORS Middleware - se ejecuta primero (last added, first executed)
+// CORS Middleware simple
 $app->add(function ($request, $handler) {
     $origin = $request->getHeaderLine('Origin');
     $allowedOrigins = [
@@ -42,9 +42,11 @@ $app->add(function ($request, $handler) {
 
     $allowedOrigin = in_array($origin, $allowedOrigins) ? $origin : 'https://mundialmcu.netlify.app';
 
-    // Responder OPTIONS directamente
+    // Solo procesar OPTIONS para CORS preflight
     if ($request->getMethod() === 'OPTIONS') {
-        return (new \Slim\Psr7\Response())
+        $response = $handler->handle($request);
+        return $response
+            ->withStatus(200)
             ->withHeader('Access-Control-Allow-Origin', $allowedOrigin)
             ->withHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS')
             ->withHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With')
