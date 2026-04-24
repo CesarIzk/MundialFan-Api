@@ -5,7 +5,7 @@ return [
         "host" => "centerbeam.proxy.rlwy.net",
         "user" => "root",
         "password" => "EwebDfGLTEAdcqOwJpMbELbIlyXabWhX",
-        "dbname" => "mundialfan",
+        "dbname" => "railway",
         "port" => "35011",
     ],
 ];
