@@ -7,8 +7,7 @@ nixPkgs = [
   "php82Extensions.tokenizer",
   "php82Extensions.fileinfo",
   "php82Extensions.curl",
-  "php82Extensions.gd",
-  "composer"
+  "php82Extensions.gd"
 ]
 
 [phases.install]
