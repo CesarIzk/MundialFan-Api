@@ -2,11 +2,12 @@
 builder = "NIXPACKS"
 
 [build.nixpacks]
-phases = [
-  { name = "setup", nixPkgs = ["php82", "php82Extensions.pdo", "php82Extensions.pdo_mysql", "php82Extensions.mbstring", "php82Extensions.tokenizer"] },
-  { name = "install", cmds = ["composer install --no-dev --optimize-autoloader"] }
-]
+# Forzar PHP 8.2 y NO instalar nginx automáticamente
+nixpkgs = ["php82", "php82Extensions.pdo", "php82Extensions.pdo_mysql", "php82Extensions.mbstring", "php82Extensions.tokenizer"]
+
+[phases]
+setup = { nixPkgs = ["php82", "composer"] }
+install = { cmds = ["composer install --no-dev --optimize-autoloader"] }
 
 [deploy]
-startCommand = "php -S 0.0.0.0:${PORT} router.php"
-healthcheckPath = "/health"  # Si tienes un endpoint de health check
+startCommand = "php -S 0.0.0.0:${PORT} -t public"
