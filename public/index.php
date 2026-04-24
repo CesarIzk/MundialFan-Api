@@ -18,33 +18,24 @@ $app = AppFactory::create();;
 $routes = require __DIR__ . '/../routes.php';
 $routes($app);
 
-// ③ Middlewares (orden LIFO: el último registrado se ejecuta primero)
+// ── index.php corregido ───────────────────────────────────────────────────────
 
 $app->addBodyParsingMiddleware();
 $app->add(new ContentLengthMiddleware());
 
-// ErrorMiddleware envuelve todo lo de abajo → se ejecuta antes que CORS
-$app->addErrorMiddleware(
-    displayErrorDetails: (bool)($_ENV['APP_DEBUG'] ?? false),
-    logErrors: true,
-    logErrorDetails: true
-);
-
-// CORS Middleware simple
+// CORS va después de Error (LIFO: CORS se ejecuta PRIMERO)
 $app->add(function ($request, $handler) {
     $origin = $request->getHeaderLine('Origin');
     $allowedOrigins = [
         'https://mundialmcu.netlify.app',
         'http://localhost:3000',
         'http://localhost:8080',
-        'http://0.0.0.0:8080'
+        'http://0.0.0.0:8080',
     ];
-
     $allowedOrigin = in_array($origin, $allowedOrigins) ? $origin : 'https://mundialmcu.netlify.app';
 
-    // Solo procesar OPTIONS para CORS preflight
     if ($request->getMethod() === 'OPTIONS') {
-        $response = $handler->handle($request);
+        $response = new \Slim\Psr7\Response();
         return $response
             ->withStatus(200)
             ->withHeader('Access-Control-Allow-Origin', $allowedOrigin)
@@ -62,4 +53,9 @@ $app->add(function ($request, $handler) {
         ->withHeader('Access-Control-Allow-Credentials', 'true');
 });
 
-$app->run();
+// Error va al final (LIFO: se ejecuta de último, envuelve todo)
+$app->addErrorMiddleware(
+    displayErrorDetails: (bool)($_ENV['APP_DEBUG'] ?? false),
+    logErrors: true,
+    logErrorDetails: true
+);
