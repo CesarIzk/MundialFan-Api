@@ -53,9 +53,8 @@ $app->add(function ($request, $handler) {
         ->withHeader('Access-Control-Allow-Credentials', 'true');
 });
 
-// Error va al final (LIFO: se ejecuta de último, envuelve todo)
 $app->addErrorMiddleware(
-    displayErrorDetails: (bool)($_ENV['APP_DEBUG'] ?? false),
+    displayErrorDetails: true,
     logErrors: true,
     logErrorDetails: true
 );
