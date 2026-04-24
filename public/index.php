@@ -36,8 +36,17 @@ $app->addErrorMiddleware(
 );
 
 // CORS al final del código = primero en ejecutarse (LIFO)
-// Así los headers CORS se añaden incluso en respuestas de error (404, 405, 500)
 $app->add(function ($request, $handler) {
+    // ← NUEVO: responder preflight aquí mismo, sin pasar al handler
+    if ($request->getMethod() === 'OPTIONS') {
+        $response = new \Slim\Psr7\Response();
+        return $response
+            ->withHeader('Access-Control-Allow-Origin',  $_ENV['FRONTEND_URL'] ?? '*')
+            ->withHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With')
+            ->withHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS')
+            ->withStatus(200);
+    }
+
     $response = $handler->handle($request);
     return $response
         ->withHeader('Access-Control-Allow-Origin',  $_ENV['FRONTEND_URL'] ?? '*')
