@@ -15,6 +15,10 @@ use Slim\Routing\RouteCollectorProxy;
 
 return function (App $app) {
 
+    // ── Preflight OPTIONS global ──────────────────────────────────────────────
+    $app->options('/{routes:.+}', function ($request, $response) {
+        return $response; // el middleware CORS en index.php agrega los headers
+    });
     // ── Prefijo global /api ───────────────────────────────────────────────────
     $app->group('/api', function (RouteCollectorProxy $api) {
 
