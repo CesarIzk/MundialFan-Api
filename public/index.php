@@ -23,7 +23,14 @@ $routes($app);
 $app->addBodyParsingMiddleware();
 $app->add(new ContentLengthMiddleware());
 
-// CORS va antes del Error Middleware para que envuelva los errores también
+// Error primero en registro = último en ejecutarse
+$app->addErrorMiddleware(
+    displayErrorDetails: true,
+    logErrors: true,
+    logErrorDetails: true
+);
+
+// CORS último en registro = primero en ejecutarse (envuelve todo, incluso errores)
 $app->add(function ($request, $handler) {
     $origin = $request->getHeaderLine('Origin');
     $allowedOrigins = [
@@ -32,51 +39,25 @@ $app->add(function ($request, $handler) {
         'http://localhost:8080',
         'http://0.0.0.0:8080',
     ];
-    
-    // Si el origen está en la lista, usarlo; si no, usar wildcard como fallback
-    $allowedOrigin = in_array($origin, $allowedOrigins) ? $origin : '*';
+    $allowedOrigin = in_array($origin, $allowedOrigins) ? $origin : 'https://mundialmcu.netlify.app';
 
-    // Manejo de solicitudes preflight OPTIONS
     if ($request->getMethod() === 'OPTIONS') {
         $response = new \Slim\Psr7\Response();
-        $corsResponse = $response
+        return $response
             ->withStatus(200)
+            ->withHeader('Access-Control-Allow-Origin', $allowedOrigin)
             ->withHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS')
             ->withHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With')
+            ->withHeader('Access-Control-Allow-Credentials', 'true')
             ->withHeader('Access-Control-Max-Age', '86400');
-        
-        // Agregar el header Origin si no es wildcard
-        if ($allowedOrigin !== '*') {
-            $corsResponse = $corsResponse
-                ->withHeader('Access-Control-Allow-Origin', $allowedOrigin)
-                ->withHeader('Access-Control-Allow-Credentials', 'true');
-        } else {
-            $corsResponse = $corsResponse->withHeader('Access-Control-Allow-Origin', '*');
-        }
-        
-        return $corsResponse;
     }
 
     $response = $handler->handle($request);
-    
-    // Agregar headers CORS a todas las respuestas (incluyendo errores)
-    if ($allowedOrigin !== '*') {
-        $response = $response
-            ->withHeader('Access-Control-Allow-Origin', $allowedOrigin)
-            ->withHeader('Access-Control-Allow-Credentials', 'true');
-    } else {
-        $response = $response->withHeader('Access-Control-Allow-Origin', '*');
-    }
-    
     return $response
+        ->withHeader('Access-Control-Allow-Origin', $allowedOrigin)
         ->withHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS')
-        ->withHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
+        ->withHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With')
+        ->withHeader('Access-Control-Allow-Credentials', 'true');
 });
 
-$app->addErrorMiddleware(
-    displayErrorDetails: true,
-    logErrors: true,
-    logErrorDetails: true
-);
-
-$app->run(); // ← falta esta línea
+$app->run();
