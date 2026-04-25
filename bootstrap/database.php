@@ -6,11 +6,11 @@ $capsule = new Capsule();
 
 $capsule->addConnection([
     'driver'    => 'mysql',
-    'host'      => $_ENV['DB_HOST']     ?? '127.0.0.1',
-    'port'      => $_ENV['DB_PORT']     ?? '3306',
-    'database'  => $_ENV['DB_DATABASE'] ?? 'mundialfan',
-    'username'  => $_ENV['DB_USERNAME'] ?? 'root',
-    'password'  => $_ENV['DB_PASSWORD'] ?? 'root',
+    'host'      => $_ENV['MYSQLHOST']     ?? '127.0.0.1',
+    'port'      => $_ENV['MYSQLPORT']     ?? '3306',
+    'database'  => $_ENV['MYSQLDATABASE'] ?? 'mundialfan',
+    'username'  => $_ENV['MYSQLUSER']     ?? 'root',
+    'password'  => $_ENV['MYSQLPASSWORD'] ?? 'root',
     'charset'   => 'utf8mb4',
     'collation' => 'utf8mb4_unicode_ci',
     'prefix'    => '',
