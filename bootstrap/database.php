@@ -4,17 +4,35 @@ use Illuminate\Database\Capsule\Manager as Capsule;
 
 $capsule = new Capsule();
 
-$capsule->addConnection([
-    'driver'    => 'mysql',
-    'host'      => $_ENV['DB_HOST']     ?? getenv('DB_HOST')     ?: 'mysql.railway.internal',
-    'port'      => $_ENV['DB_PORT']     ?? getenv('DB_PORT')     ?: 3306,
-    'database'  => $_ENV['DB_DATABASE'] ?? getenv('DB_DATABASE') ?: 'railway',
-    'username'  => $_ENV['DB_USERNAME'] ?? getenv('DB_USERNAME') ?: 'root',
-    'password'  => $_ENV['DB_PASSWORD'] ?? getenv('DB_PASSWORD') ?: '',
-    'charset'   => 'utf8mb4',
-    'collation' => 'utf8mb4_unicode_ci',
-    'prefix'    => '',
-]);
+$url = $_ENV['MYSQL_URL'] ?? getenv('MYSQL_URL');
+
+if ($url) {
+    $parts = parse_url($url);
+    $capsule->addConnection([
+        'driver'    => 'mysql',
+        'host'      => $parts['host'],
+        'port'      => $parts['port'] ?? 3306,
+        'database'  => ltrim($parts['path'], '/'),
+        'username'  => $parts['user'],
+        'password'  => $parts['pass'],
+        'charset'   => 'utf8mb4',
+        'collation' => 'utf8mb4_unicode_ci',
+        'prefix'    => '',
+    ]);
+} else {
+    // fallback local
+    $capsule->addConnection([
+        'driver'    => 'mysql',
+        'host'      => '127.0.0.1',
+        'port'      => 3306,
+        'database'  => 'mundialfan',
+        'username'  => 'root',
+        'password'  => 'root',
+        'charset'   => 'utf8mb4',
+        'collation' => 'utf8mb4_unicode_ci',
+        'prefix'    => '',
+    ]);
+}
 
 $capsule->setAsGlobal();
 $capsule->bootEloquent();
