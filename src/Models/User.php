@@ -26,6 +26,8 @@ class User extends Model
         'bio',
         'status',
         'total_posts',
+        'created_at',
+        'updated_at',
     ];
 
     // Ocultar password en respuestas JSON
@@ -35,6 +37,7 @@ class User extends Model
     protected $casts = [
         'birth_date'    => 'date',
         'created_at'    => 'datetime',
+        'updated_at'    => 'datetime',
         'last_activity' => 'datetime',
         'total_posts'   => 'integer',
     ];
