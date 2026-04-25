@@ -23,7 +23,7 @@ $routes($app);
 $app->addBodyParsingMiddleware();
 $app->add(new ContentLengthMiddleware());
 
-// CORS va después de Error (LIFO: CORS se ejecuta PRIMERO)
+// CORS va antes del Error Middleware para que envuelva los errores también
 $app->add(function ($request, $handler) {
     $origin = $request->getHeaderLine('Origin');
     $allowedOrigins = [
@@ -59,7 +59,7 @@ $app->add(function ($request, $handler) {
 
     $response = $handler->handle($request);
     
-    // Agregar headers CORS a todas las respuestas
+    // Agregar headers CORS a todas las respuestas (incluyendo errores)
     if ($allowedOrigin !== '*') {
         $response = $response
             ->withHeader('Access-Control-Allow-Origin', $allowedOrigin)
