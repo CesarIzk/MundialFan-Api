@@ -11,7 +11,7 @@ if ($url === false) {
             'port' => 3306,
             'user' => 'root',
             'password' => 'EwebDfGLTEAdcqOwJpMbELbIlyXabWhX',
-            'dbname' => 'railway', // 👈 Cambia esto al nombre de tu BD local
+            'dbname' => 'railway', // 
             'charset' => 'utf8mb4'
         ]
     ];
