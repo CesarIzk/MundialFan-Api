@@ -32,17 +32,17 @@ class PostController
             $arr = $post->toArray();
             $arr['liked']      = $userId ? Like::exists($post->id, $userId) : false;
             $arr['likes_count'] = $post->likes;
-            $arr['comments']   = Comment::byPost($post->id)
-                ->map(fn($c) => [
-                    'id'      => $c->id,
-                    'content' => $c->content,
-                    'user'    => [
-                        'id'              => $c->user->id,
-                        'name'            => $c->user->name,
-                        'profile_picture' => $c->user->profile_picture,
-                    ],
-                    'created_at' => $c->created_at,
-                ]);
+            $arr['comments'] = Comment::byPost($post->id)
+    ->map(fn($c) => [
+        'id'      => $c->id,
+        'content' => $c->content,
+        'user'    => [
+            'id'              => $c->user?->id,
+            'name'            => $c->user?->name,
+            'profile_picture' => $c->user?->profile_picture,
+        ],
+        'created_at' => $c->created_at,
+    ]);
             return $arr;
         });
 

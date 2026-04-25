@@ -18,7 +18,7 @@ $app = AppFactory::create();;
 $routes = require __DIR__ . '/../routes.php';
 $routes($app);
 
-// ── index.php corregido ───────────────────────────────────────────────────────
+
 
 $app->addBodyParsingMiddleware();
 $app->add(new ContentLengthMiddleware());
@@ -29,6 +29,9 @@ $app->addErrorMiddleware(
     logErrors: true,
     logErrorDetails: true
 );
+
+ini_set('display_errors', 0);
+error_reporting(0);
 
 // CORS último en registro = primero en ejecutarse (envuelve todo, incluso errores)
 $app->add(function ($request, $handler) {
