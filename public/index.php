@@ -6,8 +6,10 @@ use Slim\Middleware\ContentLengthMiddleware;
 require __DIR__ . '/../vendor/autoload.php';
 
 // ── Cargar variables de entorno ───────────────────────────────────────────────
+// createUnsafeImmutable permite que getenv() funcione con variables del sistema
+// (Railway las inyecta como variables de sistema, no como archivo .env)
 $dotenv = Dotenv\Dotenv::createUnsafeImmutable(__DIR__ . '/..');
-$dotenv->safeLoad(); // safeLoad no falla si no hay archivo .env (producción)
+$dotenv->safeLoad();
 
 // ── Bootstrap de Eloquent ─────────────────────────────────────────────────────
 require __DIR__ . '/../bootstrap/database.php';
@@ -24,7 +26,6 @@ $app->add(function ($request, $handler) {
     ];
     $allowedOrigin = in_array($origin, $allowedOrigins) ? $origin : 'https://mundialmcu.netlify.app';
 
-    // Responder preflight OPTIONS inmediatamente, sin pasar por rutas
     if ($request->getMethod() === 'OPTIONS') {
         $response = new \Slim\Psr7\Response();
         return $response
@@ -47,14 +48,16 @@ $app->add(function ($request, $handler) {
 $app->addBodyParsingMiddleware();
 $app->add(new ContentLengthMiddleware());
 
+// ── Mostrar errores detallados para depuración ────────────────────────────────
+// TODO: cambiar displayErrorDetails a false cuando todo funcione
 $app->addErrorMiddleware(
-    displayErrorDetails: false,
+    displayErrorDetails: true,
     logErrors:           true,
     logErrorDetails:     true
 );
 
-ini_set('display_errors', 0);
-error_reporting(0);
+ini_set('display_errors', 1);
+error_reporting(E_ALL);
 
 // ── Rutas ─────────────────────────────────────────────────────────────────────
 $routes = require __DIR__ . '/../routes.php';
