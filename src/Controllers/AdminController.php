@@ -8,9 +8,53 @@ use App\Models\Comment;
 use Illuminate\Database\Capsule\Manager as DB;
 use Psr\Http\Message\ResponseInterface as Response;
 use Psr\Http\Message\ServerRequestInterface as Request;
+use Cloudinary\Cloudinary;
 
 class AdminController
 {
+    private ?Cloudinary $cloudinary = null;
+
+    private function getCloudinary(): \Cloudinary\Cloudinary
+    {
+        if ($this->cloudinary !== null) {
+            return $this->cloudinary;
+        }
+
+        $cloudinaryUrl = getenv('CLOUDINARY_URL') ?: ($_SERVER['CLOUDINARY_URL'] ?? '');
+
+        if (!empty($cloudinaryUrl)) {
+            $this->cloudinary = new \Cloudinary\Cloudinary($cloudinaryUrl);
+            return $this->cloudinary;
+        }
+
+        $this->cloudinary = new \Cloudinary\Cloudinary([
+            'cloud' => [
+                'cloud_name' => getenv('CLOUDINARY_CLOUD_NAME') ?: ($_SERVER['CLOUDINARY_CLOUD_NAME'] ?? ''),
+                'api_key'    => getenv('CLOUDINARY_API_KEY')    ?: ($_SERVER['CLOUDINARY_API_KEY']    ?? ''),
+                'api_secret' => getenv('CLOUDINARY_API_SECRET') ?: ($_SERVER['CLOUDINARY_API_SECRET'] ?? ''),
+            ],
+        ]);
+
+        return $this->cloudinary;
+    }
+
+    private function uploadToCloudinary($file, string $folder): string
+    {
+        $tmpName  = $file->getStream()->getMetadata('uri');
+        $mimeType = mime_content_type($tmpName);
+        $allowed  = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+
+        if (!in_array($mimeType, $allowed)) {
+            throw new \InvalidArgumentException('Formato de imagen no permitido.');
+        }
+
+        $result = $this->getCloudinary()->uploadApi()->upload($tmpName, [
+            'folder'        => $folder,
+            'resource_type' => 'image',
+        ]);
+
+        return $result['secure_url'];
+    }
     // ════════════════════════════════════════════════════════════════════════
     // POSTS
     // ════════════════════════════════════════════════════════════════════════
@@ -474,134 +518,129 @@ class AdminController
 
     // ── POST /api/admin/countries ─────────────────────────────────────────────
     public function createCountry(Request $request, Response $response): Response
-    {
-        $this->requireAdmin($request);
+{
+    $this->requireAdmin($request);
 
-        $body      = (array) $request->getParsedBody();
-        $files     = $request->getUploadedFiles();
-        $uploadDir = __DIR__ . '/../../public/uploads/countries/';
+    $body  = (array) $request->getParsedBody();
+    $files = $request->getUploadedFiles();
 
-        if (!is_dir($uploadDir)) {
-            mkdir($uploadDir, 0755, true);
+    // Bandera
+    $flagPath = null;
+    if (!empty($files['flag']) && $files['flag']->getError() === UPLOAD_ERR_OK) {
+        try {
+            $flagPath = $this->uploadToCloudinary($files['flag'], 'mundialfan/countries/flags');
+        } catch (\Exception $e) {
+            return $this->json($response, ['message' => 'Error al subir la bandera: ' . $e->getMessage()], 500);
         }
+    }
 
-        // Bandera
-        $flagPath = null;
-        if (!empty($files['flag']) && $files['flag']->getError() === UPLOAD_ERR_OK) {
-            $ext      = strtolower(pathinfo($files['flag']->getClientFilename(), PATHINFO_EXTENSION));
-            $filename = 'flag_' . time() . '.' . $ext;
-            $files['flag']->moveTo($uploadDir . $filename);
-            $flagPath = 'countries/' . $filename;
-        }
+    $countryId = DB::table('countries')->insertGetId([
+        'name'           => trim($body['name']        ?? ''),
+        'code'           => strtoupper(trim($body['code'] ?? '')),
+        'continent'      => $body['continent']        ?? null,
+        'titles'         => $body['titles']           ?? 0,
+        'participations' => $body['participations']   ?? 0,
+        'coach'          => $body['coach']            ?? null,
+        'best_player'    => $body['best_player']      ?? null,
+        'flag'           => $flagPath,
+        'created_at'     => date('Y-m-d H:i:s'),
+        'updated_at'     => date('Y-m-d H:i:s'),
+    ]);
 
-        $countryId = DB::table('countries')->insertGetId([
-            'name'           => trim($body['name']        ?? ''),
-            'code'           => strtoupper(trim($body['code'] ?? '')),
-            'continent'      => $body['continent']        ?? null,
-            'titles'         => $body['titles']           ?? 0,
-            'participations' => $body['participations']   ?? 0,
-            'coach'          => $body['coach']            ?? null,
-            'best_player'    => $body['best_player']      ?? null,
-            'flag'           => $flagPath,
-            'created_at'     => date('Y-m-d H:i:s'),
-            'updated_at'     => date('Y-m-d H:i:s'),
-        ]);
-
-        // Imágenes de galería
-        if (!empty($files['images'])) {
-            foreach ((array) $files['images'] as $img) {
-                if ($img->getError() !== UPLOAD_ERR_OK) continue;
-                $ext  = strtolower(pathinfo($img->getClientFilename(), PATHINFO_EXTENSION));
-                $name = 'img_' . $countryId . '_' . uniqid() . '.' . $ext;
-                $img->moveTo($uploadDir . $name);
+    // Imágenes de galería
+    if (!empty($files['images'])) {
+        foreach ((array) $files['images'] as $img) {
+            if ($img->getError() !== UPLOAD_ERR_OK) continue;
+            try {
+                $url = $this->uploadToCloudinary($img, 'mundialfan/countries/gallery');
                 DB::table('country_images')->insert([
                     'country_id' => $countryId,
-                    'path'       => 'countries/' . $name,
+                    'path'       => $url,
                     'created_at' => date('Y-m-d H:i:s'),
                 ]);
+            } catch (\Exception $e) {
+                error_log('Error subiendo imagen de galería: ' . $e->getMessage());
             }
         }
+    }
 
-        // Video URL
-        if (!empty($body['video_url'])) {
+    // Video URL (sigue siendo texto, no cambia)
+    if (!empty($body['video_url'])) {
+        DB::table('country_videos')->insert([
+            'country_id' => $countryId,
+            'url'        => $body['video_url'],
+            'created_at' => date('Y-m-d H:i:s'),
+        ]);
+    }
+
+    return $this->json($response, ['message' => 'País creado.', 'id' => $countryId], 201);
+}
+    // ── POST /api/admin/countries/{id} ────────────────────────────────────────
+  public function updateCountry(Request $request, Response $response, array $args): Response
+{
+    $this->requireAdmin($request);
+
+    $country = DB::table('countries')->where('id', $args['id'])->first();
+    if (!$country) {
+        return $this->json($response, ['message' => 'País no encontrado.'], 404);
+    }
+
+    $body  = (array) $request->getParsedBody();
+    $files = $request->getUploadedFiles();
+
+    $update = [
+        'name'           => trim($body['name']        ?? $country->name),
+        'code'           => strtoupper(trim($body['code'] ?? $country->code)),
+        'continent'      => $body['continent']        ?? $country->continent,
+        'titles'         => $body['titles']           ?? $country->titles,
+        'participations' => $body['participations']   ?? $country->participations,
+        'coach'          => $body['coach']            ?? $country->coach,
+        'best_player'    => $body['best_player']      ?? $country->best_player,
+        'updated_at'     => date('Y-m-d H:i:s'),
+    ];
+
+    // Nueva bandera
+    if (!empty($files['flag']) && $files['flag']->getError() === UPLOAD_ERR_OK) {
+        try {
+            $update['flag'] = $this->uploadToCloudinary($files['flag'], 'mundialfan/countries/flags');
+        } catch (\Exception $e) {
+            return $this->json($response, ['message' => 'Error al subir la bandera: ' . $e->getMessage()], 500);
+        }
+    }
+
+    DB::table('countries')->where('id', $args['id'])->update($update);
+
+    // Nuevas imágenes de galería (se acumulan, no reemplazan)
+    if (!empty($files['images'])) {
+        foreach ((array) $files['images'] as $img) {
+            if ($img->getError() !== UPLOAD_ERR_OK) continue;
+            try {
+                $url = $this->uploadToCloudinary($img, 'mundialfan/countries/gallery');
+                DB::table('country_images')->insert([
+                    'country_id' => $args['id'],
+                    'path'       => $url,
+                    'created_at' => date('Y-m-d H:i:s'),
+                ]);
+            } catch (\Exception $e) {
+                error_log('Error subiendo imagen de galería: ' . $e->getMessage());
+            }
+        }
+    }
+
+    // Video URL
+    if (isset($body['video_url'])) {
+        DB::table('country_videos')->where('country_id', $args['id'])->delete();
+        if ($body['video_url']) {
             DB::table('country_videos')->insert([
-                'country_id' => $countryId,
+                'country_id' => $args['id'],
                 'url'        => $body['video_url'],
                 'created_at' => date('Y-m-d H:i:s'),
             ]);
         }
-
-        return $this->json($response, ['message' => 'País creado.', 'id' => $countryId], 201);
     }
 
-    // ── POST /api/admin/countries/{id} ────────────────────────────────────────
-    public function updateCountry(Request $request, Response $response, array $args): Response
-    {
-        $this->requireAdmin($request);
-
-        $country = DB::table('countries')->where('id', $args['id'])->first();
-        if (!$country) {
-            return $this->json($response, ['message' => 'País no encontrado.'], 404);
-        }
-
-        $body      = (array) $request->getParsedBody();
-        $files     = $request->getUploadedFiles();
-        $uploadDir = __DIR__ . '/../../public/uploads/countries/';
-
-        if (!is_dir($uploadDir)) {
-            mkdir($uploadDir, 0755, true);
-        }
-
-        $update = [
-            'name'           => trim($body['name']        ?? $country->name),
-            'code'           => strtoupper(trim($body['code'] ?? $country->code)),
-            'continent'      => $body['continent']        ?? $country->continent,
-            'titles'         => $body['titles']           ?? $country->titles,
-            'participations' => $body['participations']   ?? $country->participations,
-            'coach'          => $body['coach']            ?? $country->coach,
-            'best_player'    => $body['best_player']      ?? $country->best_player,
-            'updated_at'     => date('Y-m-d H:i:s'),
-        ];
-
-        // Nueva bandera
-        if (!empty($files['flag']) && $files['flag']->getError() === UPLOAD_ERR_OK) {
-            $ext      = strtolower(pathinfo($files['flag']->getClientFilename(), PATHINFO_EXTENSION));
-            $filename = 'flag_' . $args['id'] . '_' . time() . '.' . $ext;
-            $files['flag']->moveTo($uploadDir . $filename);
-            $update['flag'] = 'countries/' . $filename;
-        }
-
-        DB::table('countries')->where('id', $args['id'])->update($update);
-
-        // Nuevas imágenes
-        if (!empty($files['images'])) {
-            foreach ((array) $files['images'] as $img) {
-                if ($img->getError() !== UPLOAD_ERR_OK) continue;
-                $ext  = strtolower(pathinfo($img->getClientFilename(), PATHINFO_EXTENSION));
-                $name = 'img_' . $args['id'] . '_' . uniqid() . '.' . $ext;
-                $img->moveTo($uploadDir . $name);
-                DB::table('country_images')->insert([
-                    'country_id' => $args['id'],
-                    'path'       => 'countries/' . $name,
-                    'created_at' => date('Y-m-d H:i:s'),
-                ]);
-            }
-        }
-
-        // Actualizar video URL
-        if (isset($body['video_url'])) {
-            DB::table('country_videos')->where('country_id', $args['id'])->delete();
-            if ($body['video_url']) {
-                DB::table('country_videos')->insert([
-                    'country_id' => $args['id'],
-                    'url'        => $body['video_url'],
-                    'created_at' => date('Y-m-d H:i:s'),
-                ]);
-            }
-        }
-
-        return $this->json($response, ['message' => 'País actualizado.']);
-    }
+    return $this->json($response, ['message' => 'País actualizado.']);
+}
 
     // ── DELETE /api/admin/countries/{id} ──────────────────────────────────────
     public function deleteCountry(Request $request, Response $response, array $args): Response
