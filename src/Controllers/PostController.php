@@ -7,7 +7,6 @@ use App\Models\Comment;
 use App\Models\Like;
 use App\Models\Notification;
 use Cloudinary\Cloudinary;
-use Cloudinary\Transformation\Transformation;
 use Psr\Http\Message\ResponseInterface as Response;
 use Psr\Http\Message\ServerRequestInterface as Request;
 
@@ -19,10 +18,10 @@ class PostController
     {
         $this->cloudinary = new Cloudinary([
             'cloud' => [
-                'api_key' => getenv('CLOUDINARY_API_KEY') ?: $_ENV['CLOUDINARY_API_KEY'] ?? '',
-                'api_secret' => getenv('CLOUDINARY_API_SECRET') ?: $_ENV['CLOUDINARY_API_SECRET'] ?? '',
-                'cloud_name' => getenv('CLOUDINARY_CLOUD_NAME') ?: $_ENV['CLOUDINARY_CLOUD_NAME'] ?? ''
-            ]
+                'cloud_name' => getenv('CLOUDINARY_CLOUD_NAME') ?: ($_ENV['CLOUDINARY_CLOUD_NAME'] ?? ''),
+                'api_key'    => getenv('CLOUDINARY_API_KEY')    ?: ($_ENV['CLOUDINARY_API_KEY']    ?? ''),
+                'api_secret' => getenv('CLOUDINARY_API_SECRET') ?: ($_ENV['CLOUDINARY_API_SECRET'] ?? ''),
+            ],
         ]);
     }
 
@@ -39,25 +38,24 @@ class PostController
             $posts = $posts->sortByDesc('likes')->values();
         }
 
-        // Añadir si el usuario autenticado dio like
         $authUser = $request->getAttribute('auth_user');
         $userId   = $authUser['sub'] ?? null;
 
         $result = $posts->map(function ($post) use ($userId) {
-            $arr = $post->toArray();
-            $arr['liked']      = $userId ? Like::exists($post->id, $userId) : false;
+            $arr                = $post->toArray();
+            $arr['liked']       = $userId ? Like::exists($post->id, $userId) : false;
             $arr['likes_count'] = $post->likes;
-            $arr['comments'] = Comment::byPost($post->id)
-    ->map(fn($c) => [
-        'id'      => $c->id,
-        'content' => $c->content,
-        'user'    => [
-            'id'              => $c->user?->id,
-            'name'            => $c->user?->name,
-            'profile_picture' => $c->user?->profile_picture,
-        ],
-        'created_at' => $c->created_at,
-    ]);
+            $arr['comments']    = Comment::byPost($post->id)
+                ->map(fn($c) => [
+                    'id'      => $c->id,
+                    'content' => $c->content,
+                    'user'    => [
+                        'id'              => $c->user?->id,
+                        'name'            => $c->user?->name,
+                        'profile_picture' => $c->user?->profile_picture,
+                    ],
+                    'created_at' => $c->created_at,
+                ]);
             return $arr;
         });
 
@@ -74,8 +72,8 @@ class PostController
             return $this->json($response, ['message' => 'Publicación no encontrada.'], 404);
         }
 
-        $authUser = $request->getAttribute('auth_user');
-        $arr      = $post->toArray();
+        $authUser        = $request->getAttribute('auth_user');
+        $arr             = $post->toArray();
         $arr['liked']    = $authUser ? Like::exists($post->id, $authUser['sub']) : false;
         $arr['comments'] = Comment::byPost($post->id);
 
@@ -102,37 +100,35 @@ class PostController
             $file = $files['media'];
 
             if ($file->getError() === UPLOAD_ERR_OK) {
-                $ext      = strtolower(pathinfo($file->getClientFilename(), PATHINFO_EXTENSION));
-                $allowed  = ['jpg', 'jpeg', 'png', 'gif', 'mp4', 'mov'];
+                $ext     = strtolower(pathinfo($file->getClientFilename(), PATHINFO_EXTENSION));
+                $allowed = ['jpg', 'jpeg', 'png', 'gif', 'mp4', 'mov'];
 
                 if (!in_array($ext, $allowed)) {
                     return $this->json($response, ['message' => 'Tipo de archivo no permitido.'], 422);
                 }
 
+                $contentType = in_array($ext, ['mp4', 'mov']) ? 'video' : 'image';
+                $folder      = $contentType === 'video' ? 'mundialfan/videos' : 'mundialfan/images';
+
+                // Leer contenido del archivo en memoria
+                $stream = $file->getStream();
+                $stream->rewind();
+                $fileContents = $stream->getContents();
+
+                $uploadOptions = [
+                    'folder'        => $folder,
+                    'resource_type' => $contentType,
+                    'public_id'     => 'post_' . uniqid('', true),
+                ];
+
+                if ($contentType === 'video') {
+                    $uploadOptions['video_codec'] = 'auto';
+                    $uploadOptions['quality']     = 'auto';
+                }
+
                 try {
-                    $contentType = in_array($ext, ['mp4', 'mov']) ? 'video' : 'image';
-                    $folder = $contentType === 'video' ? 'mundialfan/videos' : 'mundialfan/images';
-                    
-                    // Obtener el contenido del archivo
-                    $stream = $file->getStream();
-                    $stream->rewind();
-                    $fileContents = $stream->getContents();
-                    
-                    // Subir a Cloudinary
-                    $uploadOptions = [
-                        'folder' => $folder,
-                        'resource_type' => $contentType,
-                        'public_id' => 'post_' . uniqid(true)
-                    ];
-                    
-                    if ($contentType === 'video') {
-                        $uploadOptions['video_codec'] = 'auto';
-                        $uploadOptions['quality'] = 'auto';
-                    }
-                    
                     $uploadResult = $this->cloudinary->uploadApi()->upload($fileContents, $uploadOptions);
-                    $mediaPath = $uploadResult['secure_url'];
-                    
+                    $mediaPath    = $uploadResult['secure_url'];
                 } catch (\Exception $e) {
                     return $this->json($response, ['message' => 'Error al subir el archivo: ' . $e->getMessage()], 500);
                 }
@@ -140,13 +136,13 @@ class PostController
         }
 
         $post = Post::create([
-            'user_id'      => $authUser['sub'],
-            'category_id'  => $body['category_id'] ?? null,
-            'content'      => $content,
-            'content_type' => $contentType,
-            'media_path'   => $mediaPath,
-            'status'       => 'public',
-            'likes'        => 0,
+            'user_id'        => $authUser['sub'],
+            'category_id'    => $body['category_id'] ?? null,
+            'content'        => $content,
+            'content_type'   => $contentType,
+            'media_path'     => $mediaPath,
+            'status'         => 'public',
+            'likes'          => 0,
             'comments_count' => 0,
         ]);
 
@@ -163,19 +159,12 @@ class PostController
             return $this->json($response, ['message' => 'Publicación no encontrada.'], 404);
         }
 
-        // Solo el autor o un admin puede eliminar
         if ((int)$post->user_id !== (int)$authUser['sub'] && $authUser['role'] !== 'admin') {
             return $this->json($response, ['message' => 'No autorizado.'], 403);
         }
 
-        // Eliminar archivo de Cloudinary si existe
         if ($post->media_path) {
-            try {
-                $this->deleteFromCloudinary($post->media_path);
-            } catch (\Exception $e) {
-                // Log del error pero continuar con la eliminación del post
-                error_log('Error al eliminar archivo de Cloudinary: ' . $e->getMessage());
-            }
+            $this->deleteFromCloudinary($post->media_path, $post->content_type);
         }
 
         $post->delete();
@@ -196,7 +185,6 @@ class PostController
         $liked = Like::toggle($post->id, $authUser['sub']);
         $post->refresh();
 
-        // Notificar al autor del post si se dio like (no si se quitó)
         if ($liked) {
             Notification::notify(
                 userId:     (int) $post->user_id,
@@ -208,7 +196,7 @@ class PostController
         }
 
         return $this->json($response, [
-            'liked'      => $liked,
+            'liked'       => $liked,
             'likes_count' => $post->likes,
         ]);
     }
@@ -234,7 +222,6 @@ class PostController
         $comment = Comment::createAndCount($args['id'], $authUser['sub'], $content);
         $comment->load('user:id,name,profile_picture');
 
-        // Notificar al autor del post
         $post = Post::find($args['id']);
         if ($post) {
             Notification::notify(
@@ -268,19 +255,27 @@ class PostController
         return $this->json($response, ['message' => 'Comentario eliminado.']);
     }
 
-    private function deleteFromCloudinary(string $url): void
+    // ── Helpers ───────────────────────────────────────────────────────────────
+
+    /**
+     * Elimina un recurso de Cloudinary a partir de su secure_url.
+     * URL ejemplo: https://res.cloudinary.com/CLOUD/image/upload/v123/mundialfan/images/post_abc.jpg
+     */
+    private function deleteFromCloudinary(string $url, string $contentType): void
     {
-        // Extraer el public_id de la URL de Cloudinary
-        // URL format: https://res.cloudinary.com/{cloud_name}/{type}/{upload|fetch}/{version}/{public_id}.{format}
-        if (preg_match('/\/([^\/]+)$/', $url, $matches)) {
-            $publicId = 'mundialfan/' . pathinfo($matches[1], PATHINFO_FILENAME);
-            
-            // Determinar el tipo de recurso
-            if (strpos($url, '/video/') !== false) {
-                $this->cloudinary->uploadApi()->destroy($publicId, ['resource_type' => 'video']);
-            } else {
-                $this->cloudinary->uploadApi()->destroy($publicId, ['resource_type' => 'image']);
+        try {
+            $pattern = '/\/upload\/(?:v\d+\/)?(.+?)(?:\.[a-z0-9]+)?$/i';
+
+            if (preg_match($pattern, $url, $matches)) {
+                $publicId     = $matches[1];
+                $resourceType = $contentType === 'video' ? 'video' : 'image';
+
+                $this->cloudinary->uploadApi()->destroy($publicId, [
+                    'resource_type' => $resourceType,
+                ]);
             }
+        } catch (\Exception $e) {
+            error_log('Cloudinary delete error: ' . $e->getMessage());
         }
     }
 
