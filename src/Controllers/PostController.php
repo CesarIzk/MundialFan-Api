@@ -71,7 +71,9 @@ class PostController
                     ],
                     'created_at' => $c->created_at,
                 ]);
-            return $arr;
+            
+            // Construir URL completa de Cloudinary si existe media_path
+            return $this->formatPostArray($arr);
         });
 
         return $this->json($response, $result);
@@ -92,7 +94,7 @@ class PostController
         $arr['liked']    = $authUser ? Like::exists($post->id, $authUser['sub']) : false;
         $arr['comments'] = Comment::byPost($post->id);
 
-        return $this->json($response, $arr);
+        return $this->json($response, $this->formatPostArray($arr));
     }
 
     // ── POST /api/posts ───────────────────────────────────────────────────────
@@ -141,7 +143,10 @@ class PostController
                     }
 
                     $uploadResult = $this->cloudinary->uploadApi()->upload($tempPath, $uploadOptions);
-                    $mediaPath    = $uploadResult['secure_url'];
+                    
+                    // Almacenar solo el public_id de Cloudinary (sin la URL)
+                    // El public_id incluye la carpeta: mundialfan/images/post_...
+                    $mediaPath = $uploadResult['public_id'] ?? '';
                     
                 } catch (\Exception $e) {
                     return $this->json($response, ['message' => 'Error al subir el archivo: ' . $e->getMessage()], 500);
@@ -160,7 +165,10 @@ class PostController
             'comments_count' => 0,
         ]);
 
-        return $this->json($response, $post->load('user:id,name,profile_picture'), 201);
+        $post->load('user:id,name,profile_picture');
+        $arr = $post->toArray();
+        
+        return $this->json($response, $this->formatPostArray($arr), 201);
     }
 
     // ── DELETE /api/posts/{id} ────────────────────────────────────────────────
@@ -270,6 +278,41 @@ class PostController
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────
+
+    /**
+     * Reconstruir la URL completa de Cloudinary desde el public_id almacenado en la BD
+     */
+    private function buildCloudinaryUrl(string $publicId): string
+    {
+        if (empty($publicId)) {
+            return '';
+        }
+        
+        // Si ya es una URL completa, devolverla tal cual
+        if (strpos($publicId, 'http') === 0) {
+            return $publicId;
+        }
+        
+        // Si es un public_id de Cloudinary, construir la URL
+        if (strpos($publicId, 'mundialfan/') === 0) {
+            $cloudName = $this->cloudinary->getConfig()->get('cloud.cloud_name');
+            $resourceType = (strpos($publicId, 'mundialfan/videos/') === 0) ? 'video' : 'image';
+            return "https://res.cloudinary.com/{$cloudName}/{$resourceType}/upload/{$publicId}";
+        }
+        
+        return $publicId;
+    }
+
+    /**
+     * Procesar array de post para incluir URL completa de media
+     */
+    private function formatPostArray(array $arr): array
+    {
+        if (!empty($arr['media_path'])) {
+            $arr['media_path'] = $this->buildCloudinaryUrl($arr['media_path']);
+        }
+        return $arr;
+    }
 
     /**
      * Elimina un recurso de Cloudinary a partir de su secure_url.
