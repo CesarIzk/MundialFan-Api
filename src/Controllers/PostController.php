@@ -13,6 +13,7 @@ use Psr\Http\Message\ServerRequestInterface as Request;
 class PostController
 {
     private Cloudinary $cloudinary;
+    private string $cloudinaryName;
 
     public function __construct()
     {
@@ -38,6 +39,9 @@ class PostController
             
             $this->cloudinary = new Cloudinary($config);
         }
+        
+        // Guardar cloud_name para usarlo después
+        $this->cloudinaryName = (string) (\Cloudinary\Cloudinary::config('cloud.cloud_name') ?? '');
     }
 
     // ── GET /api/posts ────────────────────────────────────────────────────────
@@ -295,9 +299,8 @@ class PostController
         
         // Si es un public_id de Cloudinary, construir la URL
         if (strpos($publicId, 'mundialfan/') === 0) {
-            $cloudName = $this->cloudinary->getConfig()->get('cloud.cloud_name');
             $resourceType = (strpos($publicId, 'mundialfan/videos/') === 0) ? 'video' : 'image';
-            return "https://res.cloudinary.com/{$cloudName}/{$resourceType}/upload/{$publicId}";
+            return "https://res.cloudinary.com/{$this->cloudinaryName}/{$resourceType}/upload/{$publicId}";
         }
         
         return $publicId;
