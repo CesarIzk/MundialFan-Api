@@ -73,7 +73,9 @@ class PostController
                     ],
                     'created_at' => $c->created_at,
                 ]);
-            return $arr;
+            
+            // Asegurar que media_path sea URL completa
+            return $this->formatPostResponse($arr);
         });
 
         return $this->json($response, $result);
@@ -94,7 +96,7 @@ class PostController
         $arr['liked']    = $authUser ? Like::exists($post->id, $authUser['sub']) : false;
         $arr['comments'] = Comment::byPost($post->id);
 
-        return $this->json($response, $arr);
+        return $this->json($response, $this->formatPostResponse($arr));
     }
 
     // ── POST /api/posts ───────────────────────────────────────────────────────
@@ -160,7 +162,10 @@ class PostController
             'comments_count' => 0,
         ]);
 
-        return $this->json($response, $post->load('user:id,name,profile_picture'), 201);
+        $post->load('user:id,name,profile_picture');
+        $arr = $post->toArray();
+        
+        return $this->json($response, $this->formatPostResponse($arr), 201);
     }
 
     // ── DELETE /api/posts/{id} ────────────────────────────────────────────────
@@ -270,6 +275,41 @@ class PostController
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────
+
+    /**
+     * Convertir media_path a URL completa de Cloudinary si es necesario
+     */
+    private function ensureCloudinaryUrl(?string $mediaPath, string $contentType = 'image'): ?string
+    {
+        if (!$mediaPath) {
+            return null;
+        }
+        
+        // Si ya es una URL completa, devolverla
+        if (strpos($mediaPath, 'http://') === 0 || strpos($mediaPath, 'https://') === 0) {
+            return $mediaPath;
+        }
+        
+        // Si es un public_id de Cloudinary, construir la URL
+        if (strpos($mediaPath, 'mundialfan/') === 0) {
+            $cloudName     = getenv('CLOUDINARY_CLOUD_NAME') ?: ($_SERVER['CLOUDINARY_CLOUD_NAME'] ?? 'dposwljhe');
+            $resourceType  = $contentType === 'video' ? 'video' : 'image';
+            return "https://res.cloudinary.com/{$cloudName}/{$resourceType}/upload/{$mediaPath}";
+        }
+        
+        return $mediaPath;
+    }
+
+    /**
+     * Formatear array de post para incluir URL completa
+     */
+    private function formatPostResponse(array $post): array
+    {
+        if (!empty($post['media_path'])) {
+            $post['media_path'] = $this->ensureCloudinaryUrl($post['media_path'], $post['content_type'] ?? 'image');
+        }
+        return $post;
+    }
 
     private function deleteFromCloudinary(string $url, string $contentType): void
     {
