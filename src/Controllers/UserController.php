@@ -2,6 +2,7 @@
 
 namespace App\Controllers;
 
+use Cloudinary\Cloudinary;
 use Illuminate\Database\Capsule\Manager as DB;
 use App\Models\User;
 use App\Models\Post;
@@ -11,6 +12,56 @@ use Psr\Http\Message\ServerRequestInterface as Request;
 
 class UserController
 {
+    private ?Cloudinary $cloudinary = null;
+
+    private function getCloudinary(): Cloudinary
+    {
+        if ($this->cloudinary !== null) {
+            return $this->cloudinary;
+        }
+
+        $cloudinaryUrl = getenv('CLOUDINARY_URL') ?: ($_SERVER['CLOUDINARY_URL'] ?? '');
+
+        if (!empty($cloudinaryUrl)) {
+            $this->cloudinary = new Cloudinary($cloudinaryUrl);
+            return $this->cloudinary;
+        }
+
+        $this->cloudinary = new Cloudinary([
+            'cloud' => [
+                'cloud_name' => getenv('CLOUDINARY_CLOUD_NAME') ?: ($_SERVER['CLOUDINARY_CLOUD_NAME'] ?? ''),
+                'api_key'    => getenv('CLOUDINARY_API_KEY')    ?: ($_SERVER['CLOUDINARY_API_KEY']    ?? ''),
+                'api_secret' => getenv('CLOUDINARY_API_SECRET') ?: ($_SERVER['CLOUDINARY_API_SECRET'] ?? ''),
+            ],
+        ]);
+
+        return $this->cloudinary;
+    }
+
+    /**
+     * Sube un archivo a Cloudinary y devuelve la secure_url.
+     * $file    → UploadedFileInterface de Slim
+     * $folder  → carpeta destino en Cloudinary
+     * $type    → 'image' | 'video'
+     */
+    private function uploadToCloudinary($file, string $folder, string $type = 'image'): string
+    {
+        $tmpName = $file->getStream()->getMetadata('uri');
+
+        $options = [
+            'folder'        => $folder,
+            'resource_type' => $type,
+        ];
+
+        if ($type === 'video') {
+            $options['video_codec'] = 'auto';
+            $options['quality']     = 'auto';
+        }
+
+        $result = $this->getCloudinary()->uploadApi()->upload($tmpName, $options);
+        return $result['secure_url'];
+    }
+
     // ── GET /api/users?q=... ──────────────────────────────────────────────────
     public function search(Request $request, Response $response): Response
     {
@@ -54,7 +105,6 @@ class UserController
             }
         }
 
-        // Validar que el username no esté tomado por otro usuario
         if (isset($body['username'])) {
             $existing = User::findByUsername($body['username']);
             if ($existing && $existing->id !== $user->id) {
@@ -86,20 +136,18 @@ class UserController
             return $this->json($response, ['message' => 'Formato de imagen no permitido.'], 422);
         }
 
-        $filename  = 'avatar_' . $user->id . '_' . time() . '.' . $ext;
-        $uploadDir = __DIR__ . '/../../public/uploads/avatars/';
-
-        if (!is_dir($uploadDir)) {
-            mkdir($uploadDir, 0755, true);
+        try {
+            $url = $this->uploadToCloudinary($file, 'mundialfan/avatars');
+        } catch (\Exception $e) {
+            return $this->json($response, ['message' => 'Error al subir el avatar: ' . $e->getMessage()], 500);
         }
 
-        $file->moveTo($uploadDir . $filename);
-        $user->profile_picture = 'uploads/avatars/' . $filename;
+        $user->profile_picture = $url;
         $user->save();
 
         return $this->json($response, [
             'message'         => 'Avatar actualizado.',
-            'profile_picture' => $user->profile_picture,
+            'profile_picture' => $url,
         ]);
     }
 
@@ -122,20 +170,18 @@ class UserController
             return $this->json($response, ['message' => 'Formato de imagen no permitido.'], 422);
         }
 
-        $filename  = 'cover_' . $user->id . '_' . time() . '.' . $ext;
-        $uploadDir = __DIR__ . '/../../public/uploads/covers/';
-
-        if (!is_dir($uploadDir)) {
-            mkdir($uploadDir, 0755, true);
+        try {
+            $url = $this->uploadToCloudinary($file, 'mundialfan/covers');
+        } catch (\Exception $e) {
+            return $this->json($response, ['message' => 'Error al subir la portada: ' . $e->getMessage()], 500);
         }
 
-        $file->moveTo($uploadDir . $filename);
-        $user->cover_picture = 'uploads/covers/' . $filename;
+        $user->cover_picture = $url;
         $user->save();
 
         return $this->json($response, [
             'message'       => 'Portada actualizada.',
-            'cover_picture' => $user->cover_picture,
+            'cover_picture' => $url,
         ]);
     }
 
@@ -204,7 +250,6 @@ class UserController
         $authUser = $request->getAttribute('auth_user');
         $myId     = $authUser['sub'];
 
-        // Obtener las solicitudes pendientes donde el receptor soy yo
         $requests = DB::table('friendships')
             ->join('users', 'friendships.user_id', '=', 'users.id')
             ->where('friendships.friend_id', $myId)
@@ -215,20 +260,23 @@ class UserController
         return $this->json($response, $requests);
     }
 
-    // ── POST /api/users/me/requests/{id} (Enviar Solicitud) ───────────────────
+    // ── POST /api/users/me/requests/{id} ─────────────────────────────────────
     public function sendRequest(Request $request, Response $response, array $args): Response
     {
         $authUser = $request->getAttribute('auth_user');
         $myId     = $authUser['sub'];
         $friendId = $args['id'];
 
-        $exists = DB::table('friendships')->where('user_id', $myId)->where('friend_id', $friendId)->exists();
-        
+        $exists = DB::table('friendships')
+            ->where('user_id', $myId)
+            ->where('friend_id', $friendId)
+            ->exists();
+
         if (!$exists) {
             DB::table('friendships')->insert([
                 'user_id'   => $myId,
                 'friend_id' => $friendId,
-                'status'    => 'pending'
+                'status'    => 'pending',
             ]);
 
             Notification::notify(
@@ -243,7 +291,7 @@ class UserController
         return $this->json($response, ['message' => 'Solicitud enviada.']);
     }
 
-    // ── POST /api/users/me/requests/{id}/accept ─────────────────────────────
+    // ── POST /api/users/me/requests/{id}/accept ───────────────────────────────
     public function acceptRequest(Request $request, Response $response, array $args): Response
     {
         $authUser = $request->getAttribute('auth_user');
@@ -266,7 +314,7 @@ class UserController
         return $this->json($response, ['message' => 'Solicitud aceptada.']);
     }
 
-    // ── POST /api/users/me/requests/{id}/decline ────────────────────────────
+    // ── POST /api/users/me/requests/{id}/decline ──────────────────────────────
     public function declineRequest(Request $request, Response $response, array $args): Response
     {
         $authUser = $request->getAttribute('auth_user');
@@ -284,8 +332,8 @@ class UserController
     // ── GET /api/users/me/chats ───────────────────────────────────────────────
     public function getChats(Request $request, Response $response): Response
     {
-        $myId  = $request->getAttribute('auth_user')['sub'];
-        
+        $myId = $request->getAttribute('auth_user')['sub'];
+
         $chats = DB::table('vw_chat_sidebar')
             ->where('owner_id', $myId)
             ->orderBy('last_message_date', 'desc')
@@ -299,7 +347,7 @@ class UserController
     {
         $myId     = $request->getAttribute('auth_user')['sub'];
         $friendId = $args['id'];
-        
+
         DB::table('messages')
             ->where('sender_id', $friendId)
             ->where('receiver_id', $myId)
@@ -307,10 +355,10 @@ class UserController
             ->update(['status' => 'read']);
 
         $messages = DB::table('messages')
-            ->where(function($q) use ($myId, $friendId) {
+            ->where(function ($q) use ($myId, $friendId) {
                 $q->where('sender_id', $myId)->where('receiver_id', $friendId);
             })
-            ->orWhere(function($q) use ($myId, $friendId) {
+            ->orWhere(function ($q) use ($myId, $friendId) {
                 $q->where('sender_id', $friendId)->where('receiver_id', $myId);
             })
             ->orderBy('created_at', 'asc')
@@ -334,7 +382,7 @@ class UserController
         if (!empty($files['media']) && $files['media']->getError() === UPLOAD_ERR_OK) {
             $file = $files['media'];
             $ext  = strtolower(pathinfo($file->getClientFilename(), PATHINFO_EXTENSION));
-            
+
             if (in_array($ext, ['jpg', 'jpeg', 'png', 'gif', 'webp'])) {
                 $mediaType = 'image';
             } elseif (in_array($ext, ['mp4', 'mov', 'avi', 'webm'])) {
@@ -343,24 +391,16 @@ class UserController
                 return $this->json($response, ['message' => 'Formato no permitido.'], 422);
             }
 
-            // Lógica para crear la carpeta combinada con los IDs ordenados (Ej: 1-2)
-            $minId      = min($myId, $friendId);
-            $maxId      = max($myId, $friendId);
-            $folderName = $minId . '-' . $maxId;
-            
-            // Back->public->uploads->Chat Multimedia->[CarpetaCombinada]->[MiID]
-            $baseDir   = __DIR__ . '/../../public/uploads/Chat Multimedia';
-            $targetDir = $baseDir . '/' . $folderName . '/' . $myId;
+            // Carpeta organizada por conversación (IDs ordenados para consistencia)
+            $minId  = min((int)$myId, (int)$friendId);
+            $maxId  = max((int)$myId, (int)$friendId);
+            $folder = "mundialfan/chats/{$minId}-{$maxId}";
 
-            if (!is_dir($targetDir)) {
-                mkdir($targetDir, 0777, true);
+            try {
+                $mediaUrl = $this->uploadToCloudinary($file, $folder, $mediaType);
+            } catch (\Exception $e) {
+                return $this->json($response, ['message' => 'Error al subir el archivo: ' . $e->getMessage()], 500);
             }
-
-            $filename = 'msg_' . time() . '_' . uniqid() . '.' . $ext;
-            $file->moveTo($targetDir . '/' . $filename);
-            
-            // Guardamos la ruta relativa en BD
-            $mediaUrl = 'Chat Multimedia/' . $folderName . '/' . $myId . '/' . $filename;
         }
 
         if (!$content && !$mediaUrl) {
@@ -374,7 +414,7 @@ class UserController
             'media_url'   => $mediaUrl,
             'media_type'  => $mediaType,
             'status'      => 'sent',
-            'created_at'  => date('Y-m-d H:i:s')
+            'created_at'  => date('Y-m-d H:i:s'),
         ]);
 
         $newMessage = DB::table('messages')->where('id', $msgId)->first();
@@ -390,6 +430,7 @@ class UserController
         return $this->json($response, (array) $newMessage);
     }
 
+    // ── Helper ────────────────────────────────────────────────────────────────
     private function json(Response $response, mixed $data, int $status = 200): Response
     {
         $response->getBody()->write(json_encode($data));
