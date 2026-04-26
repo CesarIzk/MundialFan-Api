@@ -3,7 +3,7 @@
         'name' => 'mundialfan/backend',
         'pretty_version' => 'dev-main',
         'version' => 'dev-main',
-        'reference' => 'e172ba7743e50110f28159a3cb4ecc9015c9c462',
+        'reference' => '42287b08a7a2bdf57c76ebcc49f3b397572aa6a8',
         'type' => 'library',
         'install_path' => __DIR__ . '/../../',
         'aliases' => array(),
@@ -25,6 +25,24 @@
             'reference' => '99f76ffa36cce3b70a4a6abce41dba15ca2e84cb',
             'type' => 'library',
             'install_path' => __DIR__ . '/../carbonphp/carbon-doctrine-types',
+            'aliases' => array(),
+            'dev_requirement' => false,
+        ),
+        'cloudinary/cloudinary_php' => array(
+            'pretty_version' => '3.1.2',
+            'version' => '3.1.2.0',
+            'reference' => 'c373c01db4ecfe9637b1cb384ab1587c4af86793',
+            'type' => 'library',
+            'install_path' => __DIR__ . '/../cloudinary/cloudinary_php',
+            'aliases' => array(),
+            'dev_requirement' => false,
+        ),
+        'cloudinary/transformation-builder-sdk' => array(
+            'pretty_version' => '2.1.3',
+            'version' => '2.1.3.0',
+            'reference' => '2f75344e1aa3c39d95a4610177e1a20fe7e35789',
+            'type' => 'library',
+            'install_path' => __DIR__ . '/../cloudinary/transformation-builder-sdk',
             'aliases' => array(),
             'dev_requirement' => false,
         ),
@@ -61,6 +79,33 @@
             'reference' => 'e01f4a821471308ba86aa202fed6698b6b695e3b',
             'type' => 'library',
             'install_path' => __DIR__ . '/../graham-campbell/result-type',
+            'aliases' => array(),
+            'dev_requirement' => false,
+        ),
+        'guzzlehttp/guzzle' => array(
+            'pretty_version' => '7.10.0',
+            'version' => '7.10.0.0',
+            'reference' => 'b51ac707cfa420b7bfd4e4d5e510ba8008e822b4',
+            'type' => 'library',
+            'install_path' => __DIR__ . '/../guzzlehttp/guzzle',
+            'aliases' => array(),
+            'dev_requirement' => false,
+        ),
+        'guzzlehttp/promises' => array(
+            'pretty_version' => '2.3.0',
+            'version' => '2.3.0.0',
+            'reference' => '481557b130ef3790cf82b713667b43030dc9c957',
+            'type' => 'library',
+            'install_path' => __DIR__ . '/../guzzlehttp/promises',
+            'aliases' => array(),
+            'dev_requirement' => false,
+        ),
+        'guzzlehttp/psr7' => array(
+            'pretty_version' => '2.9.0',
+            'version' => '2.9.0.0',
+            'reference' => '7d0ed42f28e42d61352a7a79de682e5e67fec884',
+            'type' => 'library',
+            'install_path' => __DIR__ . '/../guzzlehttp/psr7',
             'aliases' => array(),
             'dev_requirement' => false,
         ),
@@ -127,10 +172,19 @@
             'aliases' => array(),
             'dev_requirement' => false,
         ),
+        'monolog/monolog' => array(
+            'pretty_version' => '3.10.0',
+            'version' => '3.10.0.0',
+            'reference' => 'b321dd6749f0bf7189444158a3ce785cc16d69b0',
+            'type' => 'library',
+            'install_path' => __DIR__ . '/../monolog/monolog',
+            'aliases' => array(),
+            'dev_requirement' => false,
+        ),
         'mundialfan/backend' => array(
             'pretty_version' => 'dev-main',
             'version' => 'dev-main',
-            'reference' => 'e172ba7743e50110f28159a3cb4ecc9015c9c462',
+            'reference' => '42287b08a7a2bdf57c76ebcc49f3b397572aa6a8',
             'type' => 'library',
             'install_path' => __DIR__ . '/../../',
             'aliases' => array(),
@@ -193,6 +247,21 @@
                 0 => '1.1|2.0',
             ),
         ),
+        'psr/http-client' => array(
+            'pretty_version' => '1.0.3',
+            'version' => '1.0.3.0',
+            'reference' => 'bb5906edc1c324c9a05aa0873d40117941e5fa90',
+            'type' => 'library',
+            'install_path' => __DIR__ . '/../psr/http-client',
+            'aliases' => array(),
+            'dev_requirement' => false,
+        ),
+        'psr/http-client-implementation' => array(
+            'dev_requirement' => false,
+            'provided' => array(
+                0 => '1.0',
+            ),
+        ),
         'psr/http-factory' => array(
             'pretty_version' => '1.1.0',
             'version' => '1.1.0.0',
@@ -205,7 +274,8 @@
         'psr/http-factory-implementation' => array(
             'dev_requirement' => false,
             'provided' => array(
-                0 => '^1.0',
+                0 => '1.0',
+                1 => '^1.0',
             ),
         ),
         'psr/http-message' => array(
@@ -220,7 +290,8 @@
         'psr/http-message-implementation' => array(
             'dev_requirement' => false,
             'provided' => array(
-                0 => '^1.0 || ^2.0',
+                0 => '1.0',
+                1 => '^1.0 || ^2.0',
             ),
         ),
         'psr/http-server-handler' => array(
@@ -249,6 +320,12 @@
             'install_path' => __DIR__ . '/../psr/log',
             'aliases' => array(),
             'dev_requirement' => false,
+        ),
+        'psr/log-implementation' => array(
+            'dev_requirement' => false,
+            'provided' => array(
+                0 => '3.0.0',
+            ),
         ),
         'psr/simple-cache' => array(
             'pretty_version' => '3.0.0',

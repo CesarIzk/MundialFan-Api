@@ -13,9 +13,6 @@ $dotenv->safeLoad();
 require __DIR__ . '/../bootstrap/database.php';
 
 $app = AppFactory::create();
-
-// ── CORS primero en registro = último en ejecutarse
-//    (envuelve todo, incluso errores y preflight OPTIONS) ──────────────────────
 $app->add(function ($request, $handler) {
     $origin = $request->getHeaderLine('Origin');
     $allowedOrigins = [
@@ -47,12 +44,9 @@ $app->add(function ($request, $handler) {
         ->withHeader('Access-Control-Allow-Credentials', 'true');
 });
 
-// ── Body parser (necesario antes de las rutas para leer JSON/FormData) ─────────
 $app->addBodyParsingMiddleware();
 $app->add(new ContentLengthMiddleware());
 
-// ── Error middleware (debe ir después del CORS para que los errores
-//    también incluyan los headers de CORS) ─────────────────────────────────────
 $app->addErrorMiddleware(
     displayErrorDetails: false,   // ← false en producción
     logErrors:           true,

@@ -6,11 +6,26 @@ use App\Models\Post;
 use App\Models\Comment;
 use App\Models\Like;
 use App\Models\Notification;
+use Cloudinary\Cloudinary;
+use Cloudinary\Transformation\Transformation;
 use Psr\Http\Message\ResponseInterface as Response;
 use Psr\Http\Message\ServerRequestInterface as Request;
 
 class PostController
 {
+    private Cloudinary $cloudinary;
+
+    public function __construct()
+    {
+        $this->cloudinary = new Cloudinary([
+            'cloud' => [
+                'api_key' => getenv('CLOUDINARY_API_KEY') ?: $_ENV['CLOUDINARY_API_KEY'] ?? '',
+                'api_secret' => getenv('CLOUDINARY_API_SECRET') ?: $_ENV['CLOUDINARY_API_SECRET'] ?? '',
+                'cloud_name' => getenv('CLOUDINARY_CLOUD_NAME') ?: $_ENV['CLOUDINARY_CLOUD_NAME'] ?? ''
+            ]
+        ]);
+    }
+
     // ── GET /api/posts ────────────────────────────────────────────────────────
     public function index(Request $request, Response $response): Response
     {
@@ -94,17 +109,33 @@ class PostController
                     return $this->json($response, ['message' => 'Tipo de archivo no permitido.'], 422);
                 }
 
-                $filename  = uniqid('post_', true) . '.' . $ext;
-                $contentType = in_array($ext, ['mp4', 'mov']) ? 'video' : 'image';
-                $subFolder = $contentType === 'video' ? 'videos/' : 'images/';
-                $uploadDir = __DIR__ . '/../../public/uploads/post/' . $subFolder;
-
-                if (!is_dir($uploadDir)) {
-                    mkdir($uploadDir, 0755, true);
+                try {
+                    $contentType = in_array($ext, ['mp4', 'mov']) ? 'video' : 'image';
+                    $folder = $contentType === 'video' ? 'mundialfan/videos' : 'mundialfan/images';
+                    
+                    // Obtener el contenido del archivo
+                    $stream = $file->getStream();
+                    $stream->rewind();
+                    $fileContents = $stream->getContents();
+                    
+                    // Subir a Cloudinary
+                    $uploadOptions = [
+                        'folder' => $folder,
+                        'resource_type' => $contentType,
+                        'public_id' => 'post_' . uniqid(true)
+                    ];
+                    
+                    if ($contentType === 'video') {
+                        $uploadOptions['video_codec'] = 'auto';
+                        $uploadOptions['quality'] = 'auto';
+                    }
+                    
+                    $uploadResult = $this->cloudinary->uploadApi()->upload($fileContents, $uploadOptions);
+                    $mediaPath = $uploadResult['secure_url'];
+                    
+                } catch (\Exception $e) {
+                    return $this->json($response, ['message' => 'Error al subir el archivo: ' . $e->getMessage()], 500);
                 }
-
-                $file->moveTo($uploadDir . $filename);
-                $mediaPath   = 'uploads/post/' . $subFolder . $filename;
             }
         }
 
@@ -135,6 +166,16 @@ class PostController
         // Solo el autor o un admin puede eliminar
         if ((int)$post->user_id !== (int)$authUser['sub'] && $authUser['role'] !== 'admin') {
             return $this->json($response, ['message' => 'No autorizado.'], 403);
+        }
+
+        // Eliminar archivo de Cloudinary si existe
+        if ($post->media_path) {
+            try {
+                $this->deleteFromCloudinary($post->media_path);
+            } catch (\Exception $e) {
+                // Log del error pero continuar con la eliminación del post
+                error_log('Error al eliminar archivo de Cloudinary: ' . $e->getMessage());
+            }
         }
 
         $post->delete();
@@ -225,6 +266,22 @@ class PostController
         $comment->deleteAndCount();
 
         return $this->json($response, ['message' => 'Comentario eliminado.']);
+    }
+
+    private function deleteFromCloudinary(string $url): void
+    {
+        // Extraer el public_id de la URL de Cloudinary
+        // URL format: https://res.cloudinary.com/{cloud_name}/{type}/{upload|fetch}/{version}/{public_id}.{format}
+        if (preg_match('/\/([^\/]+)$/', $url, $matches)) {
+            $publicId = 'mundialfan/' . pathinfo($matches[1], PATHINFO_FILENAME);
+            
+            // Determinar el tipo de recurso
+            if (strpos($url, '/video/') !== false) {
+                $this->cloudinary->uploadApi()->destroy($publicId, ['resource_type' => 'video']);
+            } else {
+                $this->cloudinary->uploadApi()->destroy($publicId, ['resource_type' => 'image']);
+            }
+        }
     }
 
     private function json(Response $response, mixed $data, int $status = 200): Response
