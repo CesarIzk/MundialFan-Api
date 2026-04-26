@@ -2,4 +2,4 @@
 builder = "NIXPACKS"
 
 [deploy]
-startCommand = "php -S 0.0.0.0:$PORT -t public"
+startCommand = "php -c /app/php.ini -S 0.0.0.0:$PORT -t public"
