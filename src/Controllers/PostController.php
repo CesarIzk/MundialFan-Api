@@ -127,7 +127,7 @@ class PostController
                 }
 
                 $contentType = in_array($ext, ['mp4', 'mov']) ? 'video' : 'image';
-                $folder      = $contentType === 'video' ? 'mundialfan/videos' : 'mundialfan/imagenes';
+                $folder      = $contentType === 'video' ? 'mundialfan/videos' : 'mundialfan/images';
 
                 // Obtener la ruta temporal que PHP ya creó — igual que $file['tmp_name'] en el proyecto que funciona
                 $tmpName = $file->getStream()->getMetadata('uri');
