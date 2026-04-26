@@ -6,8 +6,8 @@ use Slim\Middleware\ContentLengthMiddleware;
 require __DIR__ . '/../vendor/autoload.php';
 
 // ── Cargar variables de entorno ───────────────────────────────────────────────
-$dotenv = Dotenv\Dotenv::createImmutable(__DIR__ . '/..');
-$dotenv->safeLoad();
+$dotenv = Dotenv\Dotenv::createUnsafeImmutable(__DIR__ . '/..');
+$dotenv->safeLoad(); // safeLoad no falla si no hay archivo .env (producción)
 
 // ── Bootstrap de Eloquent ─────────────────────────────────────────────────────
 require __DIR__ . '/../bootstrap/database.php';
@@ -48,7 +48,7 @@ $app->addBodyParsingMiddleware();
 $app->add(new ContentLengthMiddleware());
 
 $app->addErrorMiddleware(
-    displayErrorDetails: false,   // ← false en producción
+    displayErrorDetails: false,
     logErrors:           true,
     logErrorDetails:     true
 );
