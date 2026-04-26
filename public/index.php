@@ -48,16 +48,47 @@ $app->add(function ($request, $handler) {
 $app->addBodyParsingMiddleware();
 $app->add(new ContentLengthMiddleware());
 
-// ── Mostrar errores detallados para depuración ────────────────────────────────
-// TODO: cambiar displayErrorDetails a false cuando todo funcione
-$app->addErrorMiddleware(
+ini_set('display_errors', 1);
+error_reporting(E_ALL);
+
+// ── Error middleware va AL FINAL (se ejecuta primero en Slim) ─────────────────
+// Así el CORS middleware envuelve también las respuestas de error
+$errorMiddleware = $app->addErrorMiddleware(
     displayErrorDetails: true,
     logErrors:           true,
     logErrorDetails:     true
 );
 
-ini_set('display_errors', 1);
-error_reporting(E_ALL);
+// Handler de errores genérico que siempre incluye headers CORS
+$errorMiddleware->setDefaultErrorHandler(function (
+    \Psr\Http\Message\ServerRequestInterface $request,
+    \Throwable $exception,
+    bool $displayErrorDetails
+) use ($app) {
+    $origin = $request->getHeaderLine('Origin');
+    $allowedOrigins = [
+        'https://mundialmcu.netlify.app',
+        'http://localhost:3000',
+        'http://localhost:8080',
+        'http://127.0.0.1:5500',
+        'http://0.0.0.0:8080',
+    ];
+    $allowedOrigin = in_array($origin, $allowedOrigins) ? $origin : 'https://mundialmcu.netlify.app';
+
+    $payload = ['message' => $exception->getMessage()];
+    if ($displayErrorDetails) {
+        $payload['trace'] = $exception->getTraceAsString();
+    }
+
+    $response = $app->getResponseFactory()->createResponse(500);
+    $response->getBody()->write(json_encode($payload));
+    return $response
+        ->withHeader('Content-Type', 'application/json')
+        ->withHeader('Access-Control-Allow-Origin',      $allowedOrigin)
+        ->withHeader('Access-Control-Allow-Methods',     'GET, POST, PUT, PATCH, DELETE, OPTIONS')
+        ->withHeader('Access-Control-Allow-Headers',     'Content-Type, Authorization, X-Requested-With')
+        ->withHeader('Access-Control-Allow-Credentials', 'true');
+});
 
 // ── Rutas ─────────────────────────────────────────────────────────────────────
 $routes = require __DIR__ . '/../routes.php';
