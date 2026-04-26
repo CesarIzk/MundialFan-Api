@@ -122,28 +122,27 @@ class PostController
                     return $this->json($response, ['message' => 'Tipo de archivo no permitido.'], 422);
                 }
 
-                $contentType = in_array($ext, ['mp4', 'mov']) ? 'video' : 'image';
-                $folder      = $contentType === 'video' ? 'mundialfan/videos' : 'mundialfan/images';
-
-                // Leer contenido del archivo en memoria
-                $stream = $file->getStream();
-                $stream->rewind();
-                $fileContents = $stream->getContents();
-
-                $uploadOptions = [
-                    'folder'        => $folder,
-                    'resource_type' => $contentType,
-                    'public_id'     => 'post_' . uniqid('', true),
-                ];
-
-                if ($contentType === 'video') {
-                    $uploadOptions['video_codec'] = 'auto';
-                    $uploadOptions['quality']     = 'auto';
-                }
-
                 try {
-                    $uploadResult = $this->cloudinary->uploadApi()->upload($fileContents, $uploadOptions);
+                    $contentType = in_array($ext, ['mp4', 'mov']) ? 'video' : 'image';
+                    $folder      = $contentType === 'video' ? 'mundialfan/videos' : 'mundialfan/images';
+
+                    // Obtener la ruta temporal del archivo
+                    $tempPath = $file->getStream()->getMetadata('uri');
+
+                    $uploadOptions = [
+                        'folder'        => $folder,
+                        'resource_type' => $contentType,
+                        'public_id'     => 'post_' . uniqid('', true),
+                    ];
+
+                    if ($contentType === 'video') {
+                        $uploadOptions['video_codec'] = 'auto';
+                        $uploadOptions['quality']     = 'auto';
+                    }
+
+                    $uploadResult = $this->cloudinary->uploadApi()->upload($tempPath, $uploadOptions);
                     $mediaPath    = $uploadResult['secure_url'];
+                    
                 } catch (\Exception $e) {
                     return $this->json($response, ['message' => 'Error al subir el archivo: ' . $e->getMessage()], 500);
                 }
