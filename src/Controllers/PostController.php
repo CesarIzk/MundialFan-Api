@@ -14,8 +14,6 @@ class PostController
 {
     private ?Cloudinary $cloudinary = null;
 
-    // Sin constructor — Slim puede instanciar la clase sin problemas
-
     private function getCloudinary(): Cloudinary
     {
         if ($this->cloudinary !== null) {
@@ -32,12 +30,6 @@ class PostController
         $cloudName = getenv('CLOUDINARY_CLOUD_NAME') ?: ($_SERVER['CLOUDINARY_CLOUD_NAME'] ?? '');
         $apiKey    = getenv('CLOUDINARY_API_KEY')    ?: ($_SERVER['CLOUDINARY_API_KEY']    ?? '');
         $apiSecret = getenv('CLOUDINARY_API_SECRET') ?: ($_SERVER['CLOUDINARY_API_SECRET'] ?? '');
-
-        if (empty($cloudName) || empty($apiKey) || empty($apiSecret)) {
-            throw new \RuntimeException(
-                'Cloudinary no configurado. Agrega CLOUDINARY_URL en Railway.'
-            );
-        }
 
         $this->cloudinary = new Cloudinary([
             'cloud' => [
@@ -133,19 +125,14 @@ class PostController
                 }
 
                 $contentType = in_array($ext, ['mp4', 'mov']) ? 'video' : 'image';
-                $folder      = $contentType === 'video' ? 'mundialfan/videos' : 'mundialfan/images';
+                $folder      = $contentType === 'video' ? 'mundialfan/videos' : 'mundialfan/imagenes';
 
-                // public_id solo con caracteres hex — sin puntos ni caracteres especiales
-                $publicId = 'post_' . bin2hex(random_bytes(8));
-
-                $stream = $file->getStream();
-                $stream->rewind();
-                $fileContents = $stream->getContents();
+                // Obtener la ruta temporal que PHP ya creó — igual que $file['tmp_name'] en el proyecto que funciona
+                $tmpName = $file->getStream()->getMetadata('uri');
 
                 $uploadOptions = [
                     'folder'        => $folder,
                     'resource_type' => $contentType,
-                    'public_id'     => $publicId,
                 ];
 
                 if ($contentType === 'video') {
@@ -154,7 +141,7 @@ class PostController
                 }
 
                 try {
-                    $uploadResult = $this->getCloudinary()->uploadApi()->upload($fileContents, $uploadOptions);
+                    $uploadResult = $this->getCloudinary()->uploadApi()->upload($tmpName, $uploadOptions);
                     $mediaPath    = $uploadResult['secure_url'];
                 } catch (\Exception $e) {
                     return $this->json($response, ['message' => 'Error al subir el archivo: ' . $e->getMessage()], 500);
