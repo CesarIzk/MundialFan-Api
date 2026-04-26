@@ -16,13 +16,28 @@ class PostController
 
     public function __construct()
     {
-        $this->cloudinary = new Cloudinary([
-            'cloud' => [
-                'cloud_name' => getenv('CLOUDINARY_CLOUD_NAME') ?: ($_ENV['CLOUDINARY_CLOUD_NAME'] ?? ''),
-                'api_key'    => getenv('CLOUDINARY_API_KEY')    ?: ($_ENV['CLOUDINARY_API_KEY']    ?? ''),
-                'api_secret' => getenv('CLOUDINARY_API_SECRET') ?: ($_ENV['CLOUDINARY_API_SECRET'] ?? ''),
-            ],
-        ]);
+        // Usar CLOUDINARY_URL si está disponible (forma recomendada)
+        $cloudinaryUrl = getenv('CLOUDINARY_URL') ?: ($_ENV['CLOUDINARY_URL'] ?? null);
+        
+        if ($cloudinaryUrl) {
+            $this->cloudinary = new Cloudinary($cloudinaryUrl);
+        } else {
+            // Fallback a configuración manual si es necesario
+            $config = [
+                'cloud' => [
+                    'cloud_name' => getenv('CLOUDINARY_CLOUD_NAME') ?: ($_ENV['CLOUDINARY_CLOUD_NAME'] ?? ''),
+                    'api_key'    => getenv('CLOUDINARY_API_KEY')    ?: ($_ENV['CLOUDINARY_API_KEY']    ?? ''),
+                    'api_secret' => getenv('CLOUDINARY_API_SECRET') ?: ($_ENV['CLOUDINARY_API_SECRET'] ?? ''),
+                ],
+            ];
+            
+            // Validar que tengamos al menos cloud_name
+            if (empty($config['cloud']['cloud_name'])) {
+                throw new \Exception('Cloudinary no está configurado. Establece CLOUDINARY_URL o las variables CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY y CLOUDINARY_API_SECRET');
+            }
+            
+            $this->cloudinary = new Cloudinary($config);
+        }
     }
 
     // ── GET /api/posts ────────────────────────────────────────────────────────
