@@ -24,6 +24,9 @@ class ChampionshipController
             $c->goals = $c->total_goals;
             $c->teams = $c->participating_teams;
             $c->runner_up = $c->runner_up;
+            $c->{'3rdPlace'} = $c->{'3rdPlace'} ?? null;
+            $c->{'4thPlace'} = $c->{'4thPlace'} ?? null;
+            $c->Num_Games = $c->Num_Games ?? 0;
             return $c;
         });
 
@@ -42,6 +45,9 @@ class ChampionshipController
         $championship->host = $championship->host_country;
         $championship->goals = $championship->total_goals;
         $championship->teams = $championship->participating_teams;
+        $championship->{'3rdPlace'} = $championship->{'3rdPlace'} ?? null;
+        $championship->{'4thPlace'} = $championship->{'4thPlace'} ?? null;
+        $championship->Num_Games = $championship->Num_Games ?? 0;
 
         return $this->json($response, $championship);
     }
@@ -127,6 +133,9 @@ class ChampionshipController
             $c->host = $c->host_country;
             $c->goals = $c->total_goals;
             $c->teams = $c->participating_teams;
+            $c->{'3rdPlace'} = $c->{'3rdPlace'} ?? null;
+            $c->{'4thPlace'} = $c->{'4thPlace'} ?? null;
+            $c->Num_Games = $c->Num_Games ?? 0;
             return $c;
         });
 
@@ -148,6 +157,9 @@ class ChampionshipController
         $champ->goals = $champ->total_goals;
         $champ->teams = $champ->participating_teams;
         $champ->runner_up = $champ->runner_up;
+        $champ->{'3rdPlace'} = $champ->{'3rdPlace'} ?? null;
+        $champ->{'4thPlace'} = $champ->{'4thPlace'} ?? null;
+        $champ->Num_Games = $champ->Num_Games ?? 0;
 
         return $this->json($response, $champ);
     }
@@ -165,10 +177,13 @@ public function adminCreate(Request $request, Response $response): Response
     $champion = !empty($body['champion']) ? $body['champion'] : null;
     $runnerUp = !empty($body['runner_up']) ? $body['runner_up'] : null;
     $description = !empty($body['description']) ? $body['description'] : null;
+    $thirdPlace = !empty($body['3rdPlace']) ? $body['3rdPlace'] : null;
+    $fourthPlace = !empty($body['4thPlace']) ? $body['4thPlace'] : null;
     
     // Para campos numéricos, convertir a entero (0 si está vacío)
     $totalGoals = isset($body['goals']) && $body['goals'] !== '' ? (int)$body['goals'] : 0;
     $participatingTeams = isset($body['teams']) && $body['teams'] !== '' ? (int)$body['teams'] : 0;
+    $numGames = isset($body['Num_Games']) && $body['Num_Games'] !== '' ? (int)$body['Num_Games'] : 0;
 
     $id = DB::table('championships')->insertGetId([
         'year'                => $year,
@@ -178,6 +193,9 @@ public function adminCreate(Request $request, Response $response): Response
         'total_goals'         => $totalGoals,
         'participating_teams' => $participatingTeams,
         'description'         => $description,
+        '3rdPlace'            => $thirdPlace,
+        '4thPlace'            => $fourthPlace,
+        'Num_Games'           => $numGames,
         'created_at'          => date('Y-m-d H:i:s'),
         'updated_at'          => date('Y-m-d H:i:s'),
     ]);
@@ -202,9 +220,12 @@ public function adminUpdate(Request $request, Response $response, array $args): 
     $champion = !empty($body['champion']) ? $body['champion'] : null;
     $runnerUp = !empty($body['runner_up']) ? $body['runner_up'] : null;
     $description = !empty($body['description']) ? $body['description'] : null;
+    $thirdPlace = !empty($body['3rdPlace']) ? $body['3rdPlace'] : null;
+    $fourthPlace = !empty($body['4thPlace']) ? $body['4thPlace'] : null;
     
     $totalGoals = isset($body['goals']) && $body['goals'] !== '' ? (int)$body['goals'] : 0;
     $participatingTeams = isset($body['teams']) && $body['teams'] !== '' ? (int)$body['teams'] : 0;
+    $numGames = isset($body['Num_Games']) && $body['Num_Games'] !== '' ? (int)$body['Num_Games'] : 0;
 
     DB::table('championships')->where('id', $args['id'])->update([
         'year'                => $year,
@@ -214,6 +235,9 @@ public function adminUpdate(Request $request, Response $response, array $args): 
         'total_goals'         => $totalGoals,
         'participating_teams' => $participatingTeams,
         'description'         => $description,
+        '3rdPlace'            => $thirdPlace,
+        '4thPlace'            => $fourthPlace,
+        'Num_Games'           => $numGames,
         'updated_at'          => date('Y-m-d H:i:s'),
     ]);
 
