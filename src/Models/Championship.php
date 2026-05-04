@@ -28,6 +28,7 @@ class Championship extends Model
         'year'                => 'integer',
         'total_goals'         => 'integer',
         'participating_teams' => 'integer',
+        'num_games'           => 'integer',
     ];
 
     // ─── Métodos de negocio ───────────────────────────────────

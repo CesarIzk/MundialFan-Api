@@ -27,7 +27,7 @@ class ChampionshipController
             $c->third_place = $c->third_place ?? null;
             $c->fourth_place = $c->fourth_place ?? null;
             
-            $c->num_games = !empty($c->num_games) ? (string)$c->num_games : null;
+            $c->num_games = $c->num_games ?? 0;
             return $c;
         });
 
@@ -49,7 +49,7 @@ class ChampionshipController
         $championship->third_place = $championship->third_place ?? null;
         $championship->fourth_place = $championship->fourth_place ?? null;
         
-        $championship->num_games = !empty($championship->num_games) ? (string)$championship->num_games : null;
+        $championship->num_games = $championship->num_games ?? 0;
 
         return $this->json($response, $championship);
     }
@@ -138,7 +138,7 @@ class ChampionshipController
             $c->third_place = $c->third_place ?? null;
             $c->fourth_place = $c->fourth_place ?? null;
             
-            $c->num_games = !empty($c->num_games) ? (string)$c->num_games : null;
+            $c->num_games = $c->num_games ?? 0;
             return $c;
         });
 
@@ -163,7 +163,7 @@ class ChampionshipController
         $champ->third_place = $champ->third_place ?? null;
         $champ->fourth_place = $champ->fourth_place ?? null;
         
-        $champ->num_games = !empty($champ->num_games) ? (string)$champ->num_games : null;
+        $champ->num_games = $champ->num_games ?? 0;
 
         return $this->json($response, $champ);
     }
@@ -183,11 +183,11 @@ public function adminCreate(Request $request, Response $response): Response
     $description = !empty($body['description']) ? $body['description'] : null;
     $thirdPlace = !empty($body['third_place']) ? $body['third_place'] : null;
     $fourthPlace = !empty($body['fourth_place']) ? $body['fourth_place'] : null;
-    $numGames = !empty($body['num_games']) ? (string)$body['num_games'] : null;
     
     // Para campos numéricos, convertir a entero (0 si está vacío)
     $totalGoals = isset($body['goals']) && $body['goals'] !== '' ? (int)$body['goals'] : 0;
     $participatingTeams = isset($body['teams']) && $body['teams'] !== '' ? (int)$body['teams'] : 0;
+    $numGames = isset($body['num_games']) && $body['num_games'] !== '' ? (int)$body['num_games'] : 0;
 
     $id = DB::table('championships')->insertGetId([
         'year'                => $year,
@@ -226,10 +226,10 @@ public function adminUpdate(Request $request, Response $response, array $args): 
     $description = !empty($body['description']) ? $body['description'] : null;
     $thirdPlace = !empty($body['third_place']) ? $body['third_place'] : null;
     $fourthPlace = !empty($body['fourth_place']) ? $body['fourth_place'] : null;
-    $numGames = !empty($body['num_games']) ? (string)$body['num_games'] : null;
     
     $totalGoals = isset($body['goals']) && $body['goals'] !== '' ? (int)$body['goals'] : 0;
     $participatingTeams = isset($body['teams']) && $body['teams'] !== '' ? (int)$body['teams'] : 0;
+    $numGames = isset($body['num_games']) && $body['num_games'] !== '' ? (int)$body['num_games'] : 0;
 
     DB::table('championships')->where('id', $args['id'])->update([
         'year'                => $year,
