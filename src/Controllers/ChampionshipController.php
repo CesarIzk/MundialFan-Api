@@ -24,10 +24,6 @@ class ChampionshipController
             $c->goals = $c->total_goals;
             $c->teams = $c->participating_teams;
             $c->runner_up = $c->runner_up;
-            $c->third_place = $c->third_place ?? null;
-            $c->fourth_place = $c->fourth_place ?? null;
-            
-            $c->num_games = $c->num_games ?? 0;
             return $c;
         });
 
@@ -46,10 +42,6 @@ class ChampionshipController
         $championship->host = $championship->host_country;
         $championship->goals = $championship->total_goals;
         $championship->teams = $championship->participating_teams;
-        $championship->third_place = $championship->third_place ?? null;
-        $championship->fourth_place = $championship->fourth_place ?? null;
-        
-        $championship->num_games = $championship->num_games ?? 0;
 
         return $this->json($response, $championship);
     }
@@ -135,10 +127,6 @@ class ChampionshipController
             $c->host = $c->host_country;
             $c->goals = $c->total_goals;
             $c->teams = $c->participating_teams;
-            $c->third_place = $c->third_place ?? null;
-            $c->fourth_place = $c->fourth_place ?? null;
-            
-            $c->num_games = $c->num_games ?? 0;
             return $c;
         });
 
@@ -160,10 +148,6 @@ class ChampionshipController
         $champ->goals = $champ->total_goals;
         $champ->teams = $champ->participating_teams;
         $champ->runner_up = $champ->runner_up;
-        $champ->third_place = $champ->third_place ?? null;
-        $champ->fourth_place = $champ->fourth_place ?? null;
-        
-        $champ->num_games = $champ->num_games ?? 0;
 
         return $this->json($response, $champ);
     }
