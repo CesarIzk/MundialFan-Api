@@ -26,7 +26,10 @@ class ChampionshipController
             $c->runner_up = $c->runner_up;
             $c->third_place = $c->third_place ?? null;
             $c->fourth_place = $c->fourth_place ?? null;
-            $c->num_games = $c->num_games ?? null;
+            
+            $partidos = $c->num_games ?? clone $c->Num_Games ?? null;
+            $c->num_games = $partidos;
+            $c->Num_Games = $partidos; // Fallback para el caché del Frontend
             return $c;
         });
 
@@ -47,7 +50,10 @@ class ChampionshipController
         $championship->teams = $championship->participating_teams;
         $championship->third_place = $championship->third_place ?? null;
         $championship->fourth_place = $championship->fourth_place ?? null;
-        $championship->num_games = $championship->num_games ?? null;
+        
+        $partidos = $championship->num_games ?? clone $championship->Num_Games ?? null;
+        $championship->num_games = $partidos;
+        $championship->Num_Games = $partidos; // Fallback para el caché del Frontend
 
         return $this->json($response, $championship);
     }
@@ -135,7 +141,10 @@ class ChampionshipController
             $c->teams = $c->participating_teams;
             $c->third_place = $c->third_place ?? null;
             $c->fourth_place = $c->fourth_place ?? null;
-            $c->num_games = $c->num_games ?? null;
+            
+            $partidos = $c->num_games ?? clone $c->Num_Games ?? null;
+            $c->num_games = $partidos;
+            $c->Num_Games = $partidos; // Fallback para el caché del Frontend
             return $c;
         });
 
@@ -159,7 +168,10 @@ class ChampionshipController
         $champ->runner_up = $champ->runner_up;
         $champ->third_place = $champ->third_place ?? null;
         $champ->fourth_place = $champ->fourth_place ?? null;
-        $champ->num_games = $champ->num_games ?? null;
+        
+        $partidos = $champ->num_games ?? clone $champ->Num_Games ?? null;
+        $champ->num_games = $partidos;
+        $champ->Num_Games = $partidos; // Fallback para el caché del Frontend
 
         return $this->json($response, $champ);
     }
@@ -179,7 +191,7 @@ public function adminCreate(Request $request, Response $response): Response
     $description = !empty($body['description']) ? $body['description'] : null;
     $thirdPlace = !empty($body['third_place']) ? $body['third_place'] : null;
     $fourthPlace = !empty($body['fourth_place']) ? $body['fourth_place'] : null;
-    $numGames = !empty($body['num_games']) ? $body['num_games'] : null;
+    $numGames = !empty($body['num_games']) ? $body['num_games'] : (!empty($body['Num_Games']) ? $body['Num_Games'] : null);
     
     // Para campos numéricos, convertir a entero (0 si está vacío)
     $totalGoals = isset($body['goals']) && $body['goals'] !== '' ? (int)$body['goals'] : 0;
@@ -222,7 +234,7 @@ public function adminUpdate(Request $request, Response $response, array $args): 
     $description = !empty($body['description']) ? $body['description'] : null;
     $thirdPlace = !empty($body['third_place']) ? $body['third_place'] : null;
     $fourthPlace = !empty($body['fourth_place']) ? $body['fourth_place'] : null;
-    $numGames = !empty($body['num_games']) ? $body['num_games'] : null;
+    $numGames = !empty($body['num_games']) ? $body['num_games'] : (!empty($body['Num_Games']) ? $body['Num_Games'] : null);
     
     $totalGoals = isset($body['goals']) && $body['goals'] !== '' ? (int)$body['goals'] : 0;
     $participatingTeams = isset($body['teams']) && $body['teams'] !== '' ? (int)$body['teams'] : 0;
