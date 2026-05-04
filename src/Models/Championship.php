@@ -19,9 +19,9 @@ class Championship extends Model
         'total_goals',
         'participating_teams',
         'description',
-        '3rdPlace',
-        '4thPlace',
-        'Num_Games',
+        'third_place',
+        'fourth_place',
+        'num_games',
     ];
 
     protected $casts = [
