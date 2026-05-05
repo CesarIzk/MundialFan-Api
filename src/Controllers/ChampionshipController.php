@@ -184,7 +184,7 @@ public function adminCreate(Request $request, Response $response): Response
     // Para campos numéricos, convertir a entero (0 si está vacío)
     $totalGoals = isset($body['goals']) && $body['goals'] !== '' ? (int)$body['goals'] : 0;
     $participatingTeams = isset($body['teams']) && $body['teams'] !== '' ? (int)$body['teams'] : 0;
-    $numGames = isset($body['num_games']) && $body['num_games'] !== '' ? (int)$body['num_games'] : 0;
+    $num_games = isset($body['num_games']) && $body['num_games'] !== '' ? (int)$body['num_games'] : 0;
 
     $id = DB::table('championships')->insertGetId([
         'year'                => $year,
@@ -196,7 +196,7 @@ public function adminCreate(Request $request, Response $response): Response
         'description'         => $description,
         'third_place'         => $thirdPlace,
         'fourth_place'        => $fourthPlace,
-        'num_games'           => $numGames,
+        'num_games'           => $num_games,
         'created_at'          => date('Y-m-d H:i:s'),
         'updated_at'          => date('Y-m-d H:i:s'),
     ]);
@@ -226,7 +226,7 @@ public function adminUpdate(Request $request, Response $response, array $args): 
     
     $totalGoals = isset($body['goals']) && $body['goals'] !== '' ? (int)$body['goals'] : 0;
     $participatingTeams = isset($body['teams']) && $body['teams'] !== '' ? (int)$body['teams'] : 0;
-    $numGames = isset($body['num_games']) && $body['num_games'] !== '' ? (int)$body['num_games'] : 0;
+    $num_games = isset($body['num_games']) && $body['num_games'] !== '' ? (int)$body['num_games'] : 0;
 
     DB::table('championships')->where('id', $args['id'])->update([
         'year'                => $year,
@@ -238,7 +238,7 @@ public function adminUpdate(Request $request, Response $response, array $args): 
         'description'         => $description,
         'third_place'         => $thirdPlace,
         'fourth_place'        => $fourthPlace,
-        'num_games'           => $numGames,
+        'num_games'           => $num_games,
         'updated_at'          => date('Y-m-d H:i:s'),
     ]);
 
